@@ -4,6 +4,12 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, query, orderBy, limit } from 'firebase/firestore/lite';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 async function getFirebaseApp(env) {
     // Securely construct the Firebase config from environment variables (secrets)
     const firebaseConfig = {
@@ -27,8 +33,13 @@ async function getFirebaseApp(env) {
 export async function onRequest(context) {
     const { request, env } = context;
 
+    // Handle CORS preflight requests
+    if (request.method === 'OPTIONS') {
+        return new Response(null, { headers: CORS_HEADERS });
+    }
+
     if (request.method !== 'GET') {
-        return new Response('Method Not Allowed', { status: 405 });
+        return new Response('Method Not Allowed', { status: 405, headers: CORS_HEADERS });
     }
 
     let app;
@@ -36,7 +47,10 @@ export async function onRequest(context) {
         app = await getFirebaseApp(env);
     } catch (e) {
         console.error("Firebase Init Failed:", e.message);
-        return new Response(JSON.stringify({ error: "Server configuration error." }), { status: 500, headers: { 'Content-Type': 'application/json' }});
+        return new Response(JSON.stringify({ error: "Server configuration error." }), { 
+            status: 500, 
+            headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
+        });
     }
 
     const db = getFirestore(app);
@@ -57,14 +71,15 @@ export async function onRequest(context) {
         return new Response(JSON.stringify(rankings), { 
             headers: { 
                 'Content-Type': 'application/json',
-                'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
+                'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+                ...CORS_HEADERS
             } 
         });
     } catch (error) {
         console.error('Get ranking failed:', error);
         return new Response(JSON.stringify({ error: 'Failed to fetch rankings.' }), {
             status: 500,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
         });
     }
 }

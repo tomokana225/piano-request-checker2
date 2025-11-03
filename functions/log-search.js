@@ -4,6 +4,12 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore/lite';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 async function getFirebaseApp(env) {
     // Securely construct the Firebase config from environment variables (secrets)
     const firebaseConfig = {
@@ -41,16 +47,24 @@ const parseSongs = (str) => {
 
 export async function onRequest(context) {
     const { request, env } = context;
+    
+    // Handle CORS preflight requests
+    if (request.method === 'OPTIONS') {
+        return new Response(null, { headers: CORS_HEADERS });
+    }
 
     if (request.method !== 'POST') {
-        return new Response('Method Not Allowed', { status: 405 });
+        return new Response('Method Not Allowed', { status: 405, headers: CORS_HEADERS });
     }
+
+    const successHeaders = { 'Content-Type': 'application/json', ...CORS_HEADERS };
 
     let app;
     try {
         app = await getFirebaseApp(env);
     } catch (e) {
-        return new Response(JSON.stringify({ success: true, message: "Server config error" }), { status: 200 });
+        // Fail gracefully, don't block user
+        return new Response(JSON.stringify({ success: true, message: "Server config error" }), { status: 200, headers: successHeaders });
     }
 
     const db = getFirestore(app);
@@ -60,14 +74,14 @@ export async function onRequest(context) {
         const searchTerm = term?.trim().toLowerCase();
 
         if (!searchTerm) {
-            return new Response(JSON.stringify({ success: true, message: "No term provided" }), { status: 200 });
+            return new Response(JSON.stringify({ success: true, message: "No term provided" }), { status: 200, headers: successHeaders });
         }
 
         const songDocRef = doc(db, 'songlist/default');
         const docSnap = await getDoc(songDocRef);
 
         if (!docSnap.exists()) {
-            return new Response(JSON.stringify({ success: true, message: "Song list not found" }), { status: 200 });
+            return new Response(JSON.stringify({ success: true, message: "Song list not found" }), { status: 200, headers: successHeaders });
         }
         
         const songs = parseSongs(docSnap.data().list);
@@ -78,7 +92,7 @@ export async function onRequest(context) {
         );
 
         if (matchedSongs.length === 0) {
-            return new Response(JSON.stringify({ success: true, message: "No matching songs" }), { status: 200 });
+            return new Response(JSON.stringify({ success: true, message: "No matching songs" }), { status: 200, headers: successHeaders });
         }
         
         const uniqueTitles = [...new Set(matchedSongs.map(s => s.title))];
@@ -97,11 +111,11 @@ export async function onRequest(context) {
         
         await batch.commit();
 
-        return new Response(JSON.stringify({ success: true }), { status: 200 });
+        return new Response(JSON.stringify({ success: true }), { status: 200, headers: successHeaders });
 
     } catch (error) {
         console.error('Logging search failed:', error);
         // We return a success response even on failure to avoid impacting the user experience.
-        return new Response(JSON.stringify({ success: true, error: "Internal logging error" }), { status: 200 });
+        return new Response(JSON.stringify({ success: true, error: "Internal logging error" }), { status: 200, headers: successHeaders });
     }
 }
