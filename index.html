@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
   <head>
@@ -53,6 +54,7 @@
         const GiftIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></Icon>;
         const HeartIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></Icon>;
         const VideoCameraIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></Icon>;
+        const YouTubeIcon = ({ className }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.325-11.412 132.325s0 89.458 11.412 132.325c6.281 23.65 24.787 42.276 48.284 48.597C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.322 42.003-24.947 48.284-48.597 11.412-42.867 11.412-132.325 11.412-132.325s0-89.458-11.412-132.325zM232 344.473l144-88.131-144-88.131v176.262z" /></svg>);
 
 
         // --- COMPONENTS ---
@@ -184,11 +186,17 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                                             アーティスト一覧に戻る
                                         </button>
-                                        <ul className="space-y-1 list-disc list-inside">
+                                        <ul className="space-y-1">
                                             {songsForSelectedArtist.map(song => (
-                                                <li key={song.title} className="text-gray-200 ml-4 flex items-center gap-2">
-                                                  {song.title}
-                                                  {song.isNew && <span className="text-xs font-bold text-pink-400 bg-pink-900/50 px-2 py-0.5 rounded-full">NEW!</span>}
+                                                <li key={song.title} className="text-gray-200 flex items-center justify-between gap-2 p-1 rounded-md hover:bg-white/10">
+                                                  <div className="flex items-center gap-2">
+                                                    {song.title}
+                                                    {song.status === 'practicing' && <span className="text-xs font-bold text-amber-400 bg-amber-900/50 px-2 py-0.5 rounded-full">💪練習中</span>}
+                                                    {song.isNew && <span className="text-xs font-bold text-pink-400 bg-pink-900/50 px-2 py-0.5 rounded-full">NEW!</span>}
+                                                  </div>
+                                                  <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(song.title + ' ' + song.artist)}`} target="_blank" rel="noopener noreferrer" title="YouTubeで検索" className="text-gray-400 hover:text-red-500 transition-colors">
+                                                    <YouTubeIcon className="w-5 h-5" />
+                                                  </a>
                                                 </li>
                                             ))}
                                         </ul>
@@ -211,13 +219,21 @@
                                         <li key={i} className="flex items-center justify-between text-white p-2 rounded-md hover:bg-white/10">
                                             <div className="flex items-center gap-3">
                                                 <MusicNoteIcon className="h-5 w-5 text-cyan-400" />
-                                                <span>
-                                                    <strong>{song.title}</strong>
+                                                <div className="flex items-center">
+                                                    <div className="flex items-baseline gap-x-3">
+                                                        <span className="text-lg font-bold">{song.title}</span>
+                                                        <span className="text-sm text-gray-400">{song.artist}</span>
+                                                    </div>
+                                                    {song.status === 'practicing' && <span className="ml-2 text-xs font-bold text-amber-400 bg-amber-900/50 px-2 py-0.5 rounded-full">💪練習中</span>}
                                                     {song.isNew && <span className="ml-2 text-xs font-bold text-pink-400 bg-pink-900/50 px-2 py-0.5 rounded-full">NEW!</span>}
-                                                    - <span className="text-gray-400">{song.artist}</span>
-                                                </span>
+                                                </div>
                                             </div>
-                                            {song.genre && <span className="text-xs text-gray-300 bg-gray-700/80 px-2 py-1 rounded-full">{song.genre}</span>}
+                                            <div className="flex items-center gap-3">
+                                              {song.genre && <span className="text-xs text-gray-300 bg-gray-700/80 px-2 py-1 rounded-full">{song.genre}</span>}
+                                              <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(song.title + ' ' + song.artist)}`} target="_blank" rel="noopener noreferrer" title="YouTubeで検索" className="text-gray-400 hover:text-red-500 transition-colors">
+                                                  <YouTubeIcon className="w-6 h-6" />
+                                              </a>
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
@@ -246,8 +262,8 @@
                         <div className="flex justify-between items-center mb-4"><div className="flex items-center space-x-3"><CogIcon className="h-6 w-6 text-cyan-300"/><h2 className="text-xl font-bold text-white">設定</h2></div><button onClick={onClose} className="text-gray-400 hover:text-white"><XIcon className="h-6 w-6" /></button></div>
                         {isLoggedIn ? (
                             <Fragment>
-                                <p className="text-sm text-gray-400 mb-2">弾ける曲リストを編集 (形式: 曲名,アーティスト名,ジャンル,new)。<br/>ジャンルや`new`は任意です。Excelからの貼り付けも可能です。</p>
-                                <textarea value={localListInput} onChange={(e) => setLocalListInput(e.target.value)} placeholder={"例:\n夜に駆ける,YOASOBI,J-Pop,new\nPretender,Official髭男dism,J-Pop\nLemon,米津玄師"} className="w-full h-48 bg-gray-900/70 border border-gray-600 rounded-lg p-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-4" />
+                                <p className="text-sm text-gray-400 mb-2">弾ける曲リストを編集 (形式: 曲名,アーティスト名,ジャンル,new,練習中)。<br/>ジャンル, `new`, `練習中`は任意です。Excelからの貼り付けも可能です。</p>
+                                <textarea value={localListInput} onChange={(e) => setLocalListInput(e.target.value)} placeholder={"例:\n夜に駆ける,YOASOBI,J-Pop,new\nPretender,Official髭男dism,J-Pop\nLemon,米津玄師,J-Pop,,練習中"} className="w-full h-48 bg-gray-900/70 border border-gray-600 rounded-lg p-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-4" />
                                 <div className="flex justify-end gap-3"><button onClick={handleLogoutClick} className="px-5 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">ログアウト</button><button onClick={handleSaveClick} className="px-5 py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700">保存して閉じる</button></div>
                             </Fragment>
                         ) : (
@@ -364,7 +380,8 @@
                         title: parts[0], 
                         artist: parts[1],
                         genre: parts[2] || 'その他',
-                        isNew: (parts[3] || '').toLowerCase() === 'new'
+                        isNew: (parts[3] || '').toLowerCase() === 'new',
+                        status: (parts[4] || '').toLowerCase() === '練習中' ? 'practicing' : 'playable'
                     };
                 }).filter(Boolean);
             };
