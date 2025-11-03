@@ -2,13 +2,13 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <base href="https://tomokana225.github.io/piano-request-checker2/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Piano Request Checker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@300;400;500&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -22,7 +22,8 @@
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/"
   }
 }
 </script>
@@ -32,7 +33,6 @@
     <div id="root"></div>
     <script type="text/babel" data-presets="react,typescript">
       // All application code is consolidated into this single script.
-      // No other .ts or .tsx files are needed.
       (() => {
         const { useState, useCallback, Fragment, useEffect } = React;
         const { createRoot } = ReactDOM;
@@ -46,15 +46,11 @@
         const XIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></Icon>;
         const ExternalLinkIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></Icon>;
 
-        // --- CONSTANTS ---
-        const PLAYABLE_SONGS_EXAMPLE_STR = "夜に駆ける,YOASOBI\nPretender,Official髭男dism\nLemon,米津玄師\n紅蓮華,LiSA\nドライフラワー,優里\n白日,King Gnu\nマリーゴールド,あいみょん\n猫,DISH//\nうっせぇわ,Ado\n廻廻奇譚,Eve\n炎,LiSA\nCry Baby,Official髭男dism\nアイドル,YOASOBI\nKICK BACK,米津玄師\n新時代,Ado\n旅路,藤井風\n何なんw,藤井風\ngrace,藤井風\nきらり,藤井風";
-        const SONG_LIST_STORAGE_KEY = 'piano-request-checker-songs';
-
         // --- COMPONENTS ---
-        const SearchBar = ({ searchTerm, setSearchTerm, handleSearch }) => (
+        const SearchBar = ({ searchTerm, setSearchTerm, handleSearch, disabled }) => (
           <div className="relative w-full max-w-xl mx-auto">
-            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="曲名やアーティスト名で検索..." className="w-full pl-5 pr-28 py-4 text-lg bg-gray-700/50 border border-gray-600 rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all duration-300 shadow-lg" />
-            <button onClick={handleSearch} className="absolute inset-y-0 right-2 my-2 flex items-center px-6 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700 transition-colors duration-300"><SearchIcon className="h-6 w-6 mr-2" /> <span className="font-bold">検索</span></button>
+            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="曲名やアーティスト名で検索..." disabled={disabled} className="w-full pl-5 pr-28 py-4 text-lg bg-gray-700/50 border border-gray-600 rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" />
+            <button onClick={handleSearch} disabled={disabled} className="absolute inset-y-0 right-2 my-2 flex items-center px-6 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700 transition-colors duration-300 disabled:bg-gray-500 disabled:cursor-not-allowed"><SearchIcon className="h-6 w-6 mr-2" /> <span className="font-bold">検索</span></button>
           </div>
         );
         
@@ -133,41 +129,50 @@
         const App = () => {
             const [searchTerm, setSearchTerm] = useState('');
             const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
-            const [playableListInput, setPlayableListInput] = useState(() => {
-                try {
-                    const storedList = localStorage.getItem(SONG_LIST_STORAGE_KEY);
-                    return storedList === null ? PLAYABLE_SONGS_EXAMPLE_STR : storedList;
-                } catch (e) {
-                    console.error("Failed to read from localStorage", e);
-                    return PLAYABLE_SONGS_EXAMPLE_STR;
-                }
-            });
+            const [playableListInput, setPlayableListInput] = useState('');
             const [playableListResult, setPlayableListResult] = useState([]);
             const [error, setError] = useState(null);
             const [hasSearched, setHasSearched] = useState(false);
             const [isLoggedIn, setIsLoggedIn] = useState(false);
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+            const [isLoading, setIsLoading] = useState(true);
 
             useEffect(() => {
-                try {
-                    const storedList = localStorage.getItem(SONG_LIST_STORAGE_KEY);
-                    if (storedList === null) {
-                        localStorage.setItem(SONG_LIST_STORAGE_KEY, PLAYABLE_SONGS_EXAMPLE_STR);
+                const fetchSongList = async () => {
+                    try {
+                        const response = await fetch('/songs');
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        const data = await response.json();
+                        setPlayableListInput(data.list || '');
+                    } catch (e) {
+                        console.error("Failed to fetch song list:", e);
+                        setError("曲リストの読み込みに失敗しました。ページを再読み込みしてください。");
+                    } finally {
+                        setIsLoading(false);
                     }
-                } catch (e) {
-                    console.error("Failed to initialize localStorage", e);
-                }
+                };
+                fetchSongList();
             }, []);
 
             const handleLogin = (password) => { if (password === 'admin123') { setIsLoggedIn(true); return true; } return false; };
             const handleLogout = () => { setIsLoggedIn(false); };
             
-            const handleSaveSettings = (newList) => {
+            const handleSaveSettings = async (newList) => {
+                setError(null);
                 try {
+                    const response = await fetch('/songs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ list: newList }),
+                    });
+                    if (!response.ok) {
+                        throw new Error('Failed to save settings.');
+                    }
                     setPlayableListInput(newList);
-                    localStorage.setItem(SONG_LIST_STORAGE_KEY, newList);
                 } catch (e) {
-                    console.error("Failed to save to localStorage", e);
+                    console.error("Failed to save to Firestore via API", e);
                     setError("設定の保存に失敗しました。");
                 }
             };
@@ -204,12 +209,20 @@
                       <div className="inline-block bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500 mb-2"><h1 className="text-4xl md:text-5xl font-bold">Piano Request Checker</h1></div>
                       <p className="text-lg text-gray-300 mt-2">ピアノ配信でリクエストする前に、弾ける曲かチェック！</p>
                   </header>
-                  <section className="w-full">
-                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleSearch={handleSearch} />
-                  </section>
-                  <section className="w-full mt-6 flex justify-center">
-                      <ResultsDisplay error={error} playableListResult={playableListResult} hasSearched={hasSearched} searchTerm={submittedSearchTerm} />
-                  </section>
+                  {isLoading ? (
+                    <div className="text-center p-8 mt-8">
+                        <p className="text-lg text-gray-300 animate-pulse">曲リストを読み込み中...</p>
+                    </div>
+                  ) : (
+                    <Fragment>
+                      <section className="w-full">
+                        <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleSearch={handleSearch} disabled={isLoading} />
+                      </section>
+                      <section className="w-full mt-6 flex justify-center">
+                          <ResultsDisplay error={error} playableListResult={playableListResult} hasSearched={hasSearched} searchTerm={submittedSearchTerm} />
+                      </section>
+                    </Fragment>
+                  )}
                   <footer className="text-center mt-12 text-gray-500 text-sm"><p>&copy; 2024 Piano Request Checker. For demonstration purposes only.</p></footer>
                 </main>
                 <SettingsModal 
