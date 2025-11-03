@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="utf-t" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>リクエスト曲を検索</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -52,6 +52,7 @@
         const HeartIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></Icon>;
         const VideoCameraIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></Icon>;
         const YouTubeIcon = ({ className }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.325-11.412 132.325s0 89.458 11.412 132.325c6.281 23.65 24.787 42.276 48.284 48.597C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.322 42.003 24.947 48.284-48.597 11.412-42.867-11.412-132.325-11.412-132.325s0-89.458-11.412-132.325zM232 344.473l144-88.131-144-88.131v176.262z" /></svg>);
+        const TrendingUpIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></Icon>;
 
         // --- COMPONENTS ---
         const SearchBar = ({ searchTerm, setSearchTerm, handleSearch, disabled }) => (
@@ -413,7 +414,7 @@
             );
         };
         
-        const ListView = ({ songs }) => {
+        const ListView = ({ songs, rankings }) => {
             const [sortMode, setSortMode] = useState('default');
             const [selectedArtist, setSelectedArtist] = useState(null);
             const [selectedGenre, setSelectedGenre] = useState(null);
@@ -423,19 +424,36 @@
                 if (sortMode === 'title') {
                     return songsCopy.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
                 }
+                if (sortMode === 'popularity') {
+                    return songsCopy.sort((a, b) => {
+                        const countA = rankings[a.title] || 0;
+                        const countB = rankings[b.title] || 0;
+                        return countB - countA;
+                    });
+                }
                 return songs;
+            }, [songs, sortMode, rankings]);
+
+            const artistsData = useMemo(() => {
+                if (sortMode !== 'artist') return { sortedArtists: [], counts: {} };
+                const counts = songs.reduce((acc, song) => {
+                    acc[song.artist] = (acc[song.artist] || 0) + 1;
+                    return acc;
+                }, {});
+                const sortedArtists = Object.keys(counts).sort((a, b) => a.localeCompare(b, 'ja'));
+                return { sortedArtists, counts };
             }, [songs, sortMode]);
 
-            const artists = useMemo(() => {
-                if (sortMode !== 'artist') return [];
-                const artistSet = new Set(songs.map(s => s.artist));
-                return Array.from(artistSet).sort((a, b) => a.localeCompare(b, 'ja'));
-            }, [songs, sortMode]);
-
-            const genres = useMemo(() => {
-                if (sortMode !== 'genre') return [];
-                const genreSet = new Set(songs.map(s => s.genre).filter(Boolean));
-                return Array.from(genreSet).sort((a, b) => a.localeCompare(b, 'ja'));
+            const genresData = useMemo(() => {
+                if (sortMode !== 'genre') return { sortedGenres: [], counts: {} };
+                const counts = songs.reduce((acc, song) => {
+                    if (song.genre) {
+                       acc[song.genre] = (acc[song.genre] || 0) + 1;
+                    }
+                    return acc;
+                }, {});
+                const sortedGenres = Object.keys(counts).sort((a, b) => a.localeCompare(b, 'ja'));
+                return { sortedGenres, counts };
             }, [songs, sortMode]);
 
             const handleSortChange = (mode) => {
@@ -444,61 +462,83 @@
                 setSelectedGenre(null);
             };
             
-            const SongListItem = ({ song, displayFormat }) => (
-                <li className="flex justify-between items-center p-4 border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors duration-200">
-                    <div className="flex-1 overflow-hidden">
-                        <span className="font-bold text-lg text-white truncate block">
-                            {displayFormat === 'title-artist' ? `${song.title} - ${song.artist}` : song.title}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-3 ml-4 flex-shrink-0">
-                      {song.status === 'practicing' && (
-                        <span className="text-xs font-semibold bg-yellow-600 text-white px-2 py-1 rounded-full whitespace-nowrap">💪練習中</span>
-                      )}
-                      <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${song.title} ${song.artist}`)}`} target="_blank" rel="noopener noreferrer" title="YouTubeで検索" className="text-gray-400 hover:text-red-500 transition-colors">
-                        <YouTubeIcon className="h-6 w-6" />
-                      </a>
-                    </div>
-                </li>
-            );
+            const SongListItem = ({ song, displayFormat }) => {
+                const searchCount = sortMode === 'popularity' ? rankings[song.title] || 0 : 0;
+                return (
+                    <li className="flex justify-between items-center p-4 border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors duration-200 last:border-b-0">
+                        <div className="flex-1 overflow-hidden">
+                            <span className="font-bold text-lg text-white truncate block">
+                                {displayFormat === 'title-artist' ? `${song.title} - ${song.artist}` : song.title}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                          {searchCount > 0 && <span className="text-sm font-mono text-yellow-400">{searchCount}</span>}
+                          {song.status === 'practicing' && (
+                            <span className="text-xs font-semibold bg-yellow-600 text-white px-2 py-1 rounded-full whitespace-nowrap">💪練習中</span>
+                          )}
+                          <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${song.title} ${song.artist}`)}`} target="_blank" rel="noopener noreferrer" title="YouTubeで検索" className="text-gray-400 hover:text-red-500 transition-colors">
+                            <YouTubeIcon className="h-6 w-6" />
+                          </a>
+                        </div>
+                    </li>
+                );
+            };
 
             const renderContent = () => {
                 if (sortMode === 'artist') {
                     if (!selectedArtist) {
-                        return (<ul>{artists.map(artist => (
-                            <li key={artist} onClick={() => setSelectedArtist(artist)} className="p-4 border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors duration-200 cursor-pointer text-white font-semibold">{artist}</li>
+                        return (<ul>{artistsData.sortedArtists.map(artist => (
+                            <li key={artist} onClick={() => setSelectedArtist(artist)} className="flex justify-between items-center p-4 border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors duration-200 cursor-pointer text-white font-semibold last:border-b-0">
+                                <span>{artist}</span>
+                                <span className="text-gray-400 text-sm">{artistsData.counts[artist]}曲</span>
+                            </li>
                         ))}</ul>);
                     }
                     const artistSongs = songs.filter(s => s.artist === selectedArtist);
                     return (<div>
-                        <button onClick={() => setSelectedArtist(null)} className="p-4 text-cyan-400 hover:text-cyan-300 font-bold w-full text-left">← アーティスト一覧に戻る</button>
+                        <button onClick={() => setSelectedArtist(null)} className="p-4 text-cyan-400 hover:text-cyan-300 font-bold w-full text-left border-b border-gray-700/50">← アーティスト一覧に戻る</button>
+                         <div className="p-3 text-center text-gray-300 font-semibold bg-gray-900/30">
+                            {selectedArtist} (全 {artistSongs.length} 曲)
+                        </div>
                         <ul>{artistSongs.map((song, i) => <SongListItem key={i} song={song} displayFormat="title-only" />)}</ul>
                     </div>);
                 }
 
                 if (sortMode === 'genre') {
                     if (!selectedGenre) {
-                        return (<ul>{genres.map(genre => (
-                            <li key={genre} onClick={() => setSelectedGenre(genre)} className="p-4 border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors duration-200 cursor-pointer text-white font-semibold">{genre}</li>
+                        return (<ul>{genresData.sortedGenres.map(genre => (
+                            <li key={genre} onClick={() => setSelectedGenre(genre)} className="flex justify-between items-center p-4 border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors duration-200 cursor-pointer text-white font-semibold last:border-b-0">
+                               <span>{genre}</span>
+                               <span className="text-gray-400 text-sm">{genresData.counts[genre]}曲</span>
+                            </li>
                         ))}</ul>);
                     }
                     const genreSongs = songs.filter(s => s.genre === selectedGenre);
                     return (<div>
-                        <button onClick={() => setSelectedGenre(null)} className="p-4 text-cyan-400 hover:text-cyan-300 font-bold w-full text-left">← ジャンル一覧に戻る</button>
+                        <button onClick={() => setSelectedGenre(null)} className="p-4 text-cyan-400 hover:text-cyan-300 font-bold w-full text-left border-b border-gray-700/50">← ジャンル一覧に戻る</button>
+                        <div className="p-3 text-center text-gray-300 font-semibold bg-gray-900/30">
+                            {selectedGenre} (全 {genreSongs.length} 曲)
+                        </div>
                         <ul>{genreSongs.map((song, i) => <SongListItem key={i} song={song} displayFormat="title-artist" />)}</ul>
                     </div>);
                 }
                 
-                return (<ul>{sortedSongs.map((song, i) => <SongListItem key={i} song={song} displayFormat="title-artist" />)}</ul>);
+                return (<>
+                    <div className="p-3 text-center text-gray-400 font-semibold border-b border-gray-700/50">
+                        {sortMode === 'popularity' ? '検索数ランキング' : `全 ${sortedSongs.length} 曲`}
+                    </div>
+                    <ul>{sortedSongs.map((song, i) => <SongListItem key={i} song={song} displayFormat="title-artist" />)}</ul>
+                </>);
             };
 
-            const getButtonClass = (mode) => `px-4 py-2 rounded-full font-semibold transition-colors ${sortMode === mode ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`;
+            const getButtonClass = (mode) => `px-4 py-2 text-sm md:text-base rounded-full font-semibold transition-colors ${sortMode === mode ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`;
 
             return (
                 <div className="w-full max-w-2xl mx-auto mt-8 animate-fade-in">
-                    <div className="flex justify-center gap-2 md:gap-4 mb-4 p-2 bg-gray-900/50 rounded-full">
+                    <div className="flex justify-center flex-wrap gap-2 md:gap-3 mb-4 p-2 bg-gray-900/50 rounded-full">
                         <button onClick={() => handleSortChange('default')} className={getButtonClass('default')}>追加順</button>
                         <button onClick={() => handleSortChange('title')} className={getButtonClass('title')}>50音順</button>
+                        <button onClick={() => handleSortChange('popularity')} className={getButtonClass('popularity')}>人気順</button>
                         <button onClick={() => handleSortChange('artist')} className={getButtonClass('artist')}>アーティスト別</button>
                         <button onClick={() => handleSortChange('genre')} className={getButtonClass('genre')}>ジャンル別</button>
                     </div>
@@ -509,6 +549,59 @@
             );
         };
         
+        const RankingView = ({ songs, rankingList }) => {
+            if (!rankingList || rankingList.length === 0) {
+                return (
+                    <div className="w-full max-w-2xl mx-auto mt-8 p-6 bg-gray-800/50 border border-gray-700 rounded-2xl shadow-xl animate-fade-in text-center">
+                        <h2 className="text-2xl font-bold text-white mb-4">人気曲ランキング</h2>
+                        <p className="text-gray-400">まだランキングデータがありません。曲を検索するとデータが記録されます。</p>
+                    </div>
+                );
+            }
+
+            const maxCount = rankingList[0]?.count || 1;
+
+            return (
+                <div className="w-full max-w-2xl mx-auto mt-8 animate-fade-in">
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl shadow-xl overflow-hidden">
+                        <h2 className="text-2xl font-bold text-white text-center p-4 bg-gray-900/30">人気曲ランキング</h2>
+                        <ul className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                            {rankingList.map((item, index) => {
+                                const songDetails = songs.find(s => s.title === item.id);
+                                const widthPercentage = (item.count / maxCount) * 100;
+                                
+                                return (
+                                    <li key={item.id} className="p-4 border-b border-gray-700/50 last:border-b-0 hover:bg-gray-700/30 transition-colors duration-200">
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-2xl font-bold text-gray-400 w-8 text-center">{index + 1}</span>
+                                            <div className="flex-1 overflow-hidden">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-bold text-lg text-white truncate">{item.id}</p>
+                                                    {songDetails?.status === 'practicing' && (
+                                                        <span className="text-xs font-semibold bg-yellow-600 text-white px-2 py-1 rounded-full whitespace-nowrap">💪練習中</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-gray-400 truncate">{item.artist}</p>
+                                                <div className="mt-2 w-full bg-gray-700 rounded-full h-2.5">
+                                                  <div className="bg-cyan-500 h-2.5 rounded-full" style={{ width: `${widthPercentage}%` }}></div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2 ml-4">
+                                                <p className="font-mono font-bold text-xl text-yellow-400">{item.count}</p>
+                                                <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${item.id} ${item.artist}`)}`} target="_blank" rel="noopener noreferrer" title="YouTubeで検索" className="text-gray-400 hover:text-red-500 transition-colors">
+                                                    <YouTubeIcon className="h-6 w-6" />
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                </div>
+            );
+        };
+
         const App = () => {
           const FALLBACK_SONGS_STR = `夜に駆ける,YOASOBI,J-Pop,new
 Pretender,Official髭男dism,J-Pop
@@ -549,6 +642,8 @@ HANABI,Mr.Children,J-Pop
           const [isAdminOpen, setIsAdminOpen] = useState(false);
           const [isSuggestOpen, setIsSuggestOpen] = useState(false);
           const [mode, setMode] = useState('search');
+          const [rankings, setRankings] = useState({});
+          const [rankingList, setRankingList] = useState([]);
 
           const parseSongs = useCallback((str) => {
             if (!str) return [];
@@ -582,10 +677,28 @@ HANABI,Mr.Children,J-Pop
               setIsLoading(false);
             }
           }, [parseSongs, FALLBACK_SONGS_STR]);
+          
+          const fetchRankings = useCallback(async () => {
+              try {
+                  const response = await fetch('/functions/get-ranking');
+                  if (!response.ok) throw new Error('Failed to fetch rankings');
+                  const data = await response.json(); // Expected: [{ id: "song title", count: 123, artist: 'artist' }, ...]
+                  setRankingList(data);
+                  
+                  const rankingMap = data.reduce((acc, item) => {
+                      acc[item.id] = item.count;
+                      return acc;
+                  }, {});
+                  setRankings(rankingMap);
+              } catch (error) {
+                  console.error("Failed to fetch rankings:", error);
+              }
+          }, []);
 
           useEffect(() => {
             fetchSongs();
-          }, [fetchSongs]);
+            fetchRankings();
+          }, [fetchSongs, fetchRankings]);
           
           const handleSaveSongs = async (newListStr) => {
               await fetch('/functions/songs', {
@@ -596,9 +709,23 @@ HANABI,Mr.Children,J-Pop
               setSongListStr(newListStr);
               setSongs(parseSongs(newListStr));
           };
+          
+          const logSearchTerm = (term) => {
+              if (!term) return;
+              // Fire-and-forget, no need to await or handle response
+              fetch('/functions/log-search', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ term: term })
+              }).catch(err => console.error("Failed to log search term:", err));
+          };
 
           const handleSearch = () => {
               const trimmedSearchTerm = searchTerm.trim();
+              if (trimmedSearchTerm) {
+                  logSearchTerm(trimmedSearchTerm);
+              }
+
               if (trimmedSearchTerm === 'admin.passkey') {
                   setIsAdminOpen(true);
                   setSearchTerm('');
@@ -658,9 +785,10 @@ HANABI,Mr.Children,J-Pop
                   <p className="text-gray-300 animate-fade-in" style={{animationDelay: '0.2s'}}>弾ける曲 or ぷりんと楽譜にある曲かチェックできます</p>
                 </header>
                 
-                <div className="flex justify-center items-center gap-4 mb-8">
-                    <button onClick={() => setMode('search')} className={`px-8 py-3 font-bold rounded-full transition-all duration-300 ${mode === 'search' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}><SearchIcon className="h-5 w-5 inline-block mr-2"/>検索モード</button>
-                    <button onClick={() => setMode('list')} className={`px-8 py-3 font-bold rounded-full transition-all duration-300 ${mode === 'list' ? 'bg-cyan-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}><ListBulletIcon className="h-5 w-5 inline-block mr-2"/>一覧モード</button>
+                <div className="flex justify-center items-center gap-2 md:gap-4 mb-8">
+                    <button onClick={() => setMode('search')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 ${mode === 'search' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}><SearchIcon className="h-5 w-5 inline-block mr-2"/>検索</button>
+                    <button onClick={() => setMode('list')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 ${mode === 'list' ? 'bg-cyan-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}><ListBulletIcon className="h-5 w-5 inline-block mr-2"/>一覧</button>
+                    <button onClick={() => setMode('ranking')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 ${mode === 'ranking' ? 'bg-yellow-500 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}><TrendingUpIcon className="h-5 w-5 inline-block mr-2"/>ランキング</button>
                 </div>
 
                 {mode === 'search' ? (
@@ -674,8 +802,10 @@ HANABI,Mr.Children,J-Pop
                         </button>
                     </div>
                   </div>
+                ) : mode === 'list' ? (
+                  <ListView songs={songs} rankings={rankings} />
                 ) : (
-                  <ListView songs={songs} />
+                  <RankingView songs={songs} rankingList={rankingList} />
                 )}
 
                 <div className="w-full max-w-2xl mx-auto mt-12 border-t border-gray-700 pt-8">
