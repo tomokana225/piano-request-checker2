@@ -2,7 +2,6 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <base href="https://tomokana225.github.io/piano-request-checker2/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Piano Request Checker</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,7 +19,7 @@
       @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       .spinner { border-color: transparent; border-top-color: #ec4899; }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
     "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/"
@@ -37,8 +36,6 @@
         const { createRoot } = ReactDOM;
 
         // The Cloudflare Pages Function endpoint. This is the ONLY place our app will talk to.
-        // NOTE: For local development, you might need to change this to a full URL.
-        // For production on Cloudflare Pages, this relative path works perfectly.
         const API_ENDPOINT = '/api/songs';
 
         // --- ICONS ---
@@ -87,7 +84,7 @@
         
         const ResultsDisplay = ({ error, playableListResult, hasSearched, searchTerm }) => {
             if (!hasSearched) return <div className="text-center p-8 mt-8 bg-gray-800/30 rounded-2xl"><h2 className="text-2xl font-bold text-white">弾ける曲を検索しよう！</h2><p className="text-gray-400 mt-2">上の検索ボックスに曲名やアーティスト名を入力して、リスト内検索と「ぷりんと楽譜」公式サイトへのリンク表示を行います。</p></div>;
-            if (error) return <div className="text-center p-8 mt-8 bg-red-900/50 rounded-2xl text-red-300">{error}</div>;
+            if (error) return <div className="text-center p-8 mt-8 bg-red-900/50 rounded-2xl text-red-300 font-bold">{error}<p className="font-normal text-sm mt-2">管理者の方はCloudflareの環境変数やFirebaseのルール設定を確認してください。<br/>閲覧者の方は、スーパーリロード(Ctrl+Shift+R)をお試しください。</p></div>;
             return <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl animate-fade-in"><PlayableListCard results={playableListResult} /><YamahaCard searchTerm={searchTerm} /></div>;
         };
         
@@ -142,7 +139,7 @@
                   })
                   .catch(err => {
                     console.error("ドキュメントの読み込みエラー: ", err);
-                    setError("データの読み込みに失敗しました。管理者にお問い合わせください。");
+                    setError("データベースに接続できませんでした。");
                     setPlayableListInput("エラー: データを読み込めませんでした。");
                   })
                   .finally(() => {
