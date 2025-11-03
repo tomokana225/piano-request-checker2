@@ -9,6 +9,11 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@300;400;500&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -17,79 +22,57 @@
       h1, h2, h3, h4, h5, h6 { font-family: 'Kiwi Maru', serif; }
       .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
       @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      .spinner { border-color: transparent; border-top-color: #ec4899; }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
     <script type="text/babel" data-presets="react,typescript">
-      // All application code is consolidated into this single script.
-      // No other .ts or .tsx files are needed.
       (() => {
-        const { useState, useCallback, Fragment } = React;
+        const { useState, useEffect, useCallback, Fragment } = React;
         const { createRoot } = ReactDOM;
 
-        // --- TYPES ---
-        const YamahaCheckResult = { Available: 'Available', NotAvailable: 'NotAvailable', Unknown: 'Unknown' };
+        // --- Firebase Configuration ---
+        // ▼▼▼ ここにFirebaseの設定を貼り付け ▼▼▼
+        const firebaseConfig = {
+          apiKey: "YOUR_API_KEY",
+          authDomain: "YOUR_AUTH_DOMAIN",
+          projectId: "YOUR_PROJECT_ID",
+          storageBucket: "YOUR_STORAGE_BUCKET",
+          messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+          appId: "YOUR_APP_ID"
+        };
+        // ▲▲▲ ここまで ▲▲▲
 
-        // --- ICONS (as simple functional components) ---
+        let db;
+        try {
+            const app = firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore.getFirestore(app);
+        } catch (e) {
+            console.error("Firebaseの初期化に失敗しました。設定情報を確認してください。", e);
+        }
+
+        // --- ICONS ---
         const Icon = ({ children, className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>{children}</svg>;
         const SearchIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></Icon>;
         const MusicNoteIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></Icon>;
-        const CheckCircleIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></Icon>;
         const XCircleIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></Icon>;
-        const QuestionMarkCircleIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></Icon>;
-        const CogIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></Icon>;
+        const CogIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></Icon>;
         const XIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></Icon>;
         const ExternalLinkIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></Icon>;
+        const LoadingSpinner = () => <div className="spinner w-8 h-8 border-4 rounded-full animate-spin"></div>;
 
         // --- CONSTANTS ---
         const PLAYABLE_SONGS_EXAMPLE_STR = "夜に駆ける,YOASOBI\nPretender,Official髭男dism\nLemon,米津玄師\n紅蓮華,LiSA\nドライフラワー,優里\n白日,King Gnu\nマリーゴールド,あいみょん\n猫,DISH//\nうっせぇわ,Ado\n廻廻奇譚,Eve\n炎,LiSA\nCry Baby,Official髭男dism\nアイドル,YOASOBI\nKICK BACK,米津玄師\n新時代,Ado\n旅路,藤井風\n何なんw,藤井風\ngrace,藤井風\nきらり,藤井風";
-
-        // --- API SERVICE ---
-        const WORKER_URL = 'https://piano-request-proxy.tomoyaking0225.workers.dev/';
-        const checkPrintGakufu = async (query) => {
-            try {
-                const response = await fetch(WORKER_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query }),
-                });
-                if (!response.ok) {
-                    throw new Error(`サーバーからの応答エラー: ${response.status}`);
-                }
-                const data = await response.json();
-                const lines = (data.text || '').trim().split('\n');
-                let result = YamahaCheckResult.Unknown;
-                let details = data.text || '';
-                if (lines.length > 0) {
-                    const firstLine = lines[0];
-                    if (firstLine.includes('【対象】')) result = YamahaCheckResult.Available;
-                    else if (firstLine.includes('【対象外】')) result = YamahaCheckResult.NotAvailable;
-                    if (result !== YamahaCheckResult.Unknown) details = lines.slice(1).join('\n').trim();
-                }
-                return { result, details, sources: data.sources || [] };
-            } catch (e) {
-                console.error("Error calling worker or parsing response:", e);
-                throw new Error("バックエンドとの通信中にエラーが発生しました。");
-            }
-        };
-
-        // --- COMPONENTS ---
-        const LoadingSpinner = () => <div className="flex justify-center items-center p-4"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-400"></div></div>;
+        const SONGS_COLLECTION = 'songs';
+        const PLAYABLE_LIST_DOC = 'playableList';
         
-        const SearchBar = ({ searchTerm, setSearchTerm, handleSearch, isLoading }) => (
+        // --- COMPONENTS ---
+        const SearchBar = ({ searchTerm, setSearchTerm, handleSearch }) => (
           <div className="relative w-full max-w-xl mx-auto">
-            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="曲名やアーティスト名で検索..." disabled={isLoading} className="w-full pl-5 pr-28 py-4 text-lg bg-gray-700/50 border border-gray-600 rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all duration-300 shadow-lg" />
-            <button onClick={handleSearch} disabled={isLoading} className="absolute inset-y-0 right-2 my-2 flex items-center px-6 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors duration-300"><SearchIcon className="h-6 w-6 mr-2" /> <span className="font-bold">検索</span></button>
+            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="曲名やアーティスト名で検索..." className="w-full pl-5 pr-28 py-4 text-lg bg-gray-700/50 border border-gray-600 rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all duration-300 shadow-lg" />
+            <button onClick={handleSearch} className="absolute inset-y-0 right-2 my-2 flex items-center px-6 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700 transition-colors duration-300"><SearchIcon className="h-6 w-6 mr-2" /> <span className="font-bold">検索</span></button>
           </div>
         );
         
@@ -103,56 +86,43 @@
             </div>
         );
         
-        const YamahaCard = ({ isLoading, error, response, searchTerm }) => {
-            const renderContent = () => {
-                if (isLoading) return <div className="text-center"><LoadingSpinner /><p className="text-pink-300 mt-2">AIがヤマハ「プリント楽譜」を検索中...</p></div>;
-                if (error) return <div className="flex items-center space-x-4 h-full justify-center text-red-300"><XCircleIcon className="h-8 w-8" /><div><p className="text-lg font-semibold">エラーが発生しました</p><p className="text-sm">{error}</p></div></div>;
-                if (!response) {
-                    const searchUrl = `https://www.print-gakufu.com/search/result/score___keyword__${encodeURIComponent(searchTerm || '')}___subscription/`;
-                    return <div className="text-center"><p className="text-gray-400 mb-6">AIが「<span className="font-bold text-pink-300">{searchTerm}</span>」の楽譜を探します。<br/>(アプリ見放題プラン対象)</p><a href={searchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 px-8 py-3 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700 transition-all duration-300 transform hover:scale-105"><ExternalLinkIcon className="h-5 w-5" /><span>公式サイトで直接探す</span></a></div>;
-                }
-                const { result, details, sources } = response;
-                let icon, title, titleColor;
-                switch(result) {
-                    case YamahaCheckResult.Available: icon = <CheckCircleIcon className="h-10 w-10 text-green-400" />; title = "【対象】見つかりました"; titleColor = "text-green-400"; break;
-                    case YamahaCheckResult.NotAvailable: icon = <XCircleIcon className="h-10 w-10 text-red-400" />; title = "【対象外】見つかりませんでした"; titleColor = "text-red-400"; break;
-                    default: icon = <QuestionMarkCircleIcon className="h-10 w-10 text-yellow-400" />; title = "【不明】特定できませんでした"; titleColor = "text-yellow-400";
-                }
-                const summary = details.split('♫')[0].trim();
-                const songList = details.includes('♫') ? details.substring(details.indexOf('♫')).split('\n').filter(s => s.trim()) : [];
-                return (
-                    <div className="text-left w-full animate-fade-in">
-                        <div className="flex items-center gap-4 mb-4">{icon}<h4 className={`text-2xl font-bold ${titleColor}`}>{title}</h4></div>
-                        <p className="text-gray-300 mb-4 whitespace-pre-wrap">{summary}</p>
-                        {songList.length > 0 && <div className="mb-4"><h5 className="font-bold text-gray-200 mb-2">関連曲リスト:</h5><ul className="space-y-1 pl-2">{songList.map((song, i) => <li key={i} className="text-sm text-pink-300">{song}</li>)}</ul></div>}
-                        {sources && sources.length > 0 && <div><h5 className="font-bold text-gray-200 mb-2">参照元:</h5><ul className="space-y-1">{sources.map((source, i) => (<li key={i} className="text-sm"><a href={source.web?.uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-cyan-400 hover:underline"><ExternalLinkIcon className="h-4 w-4" /><span className="truncate">{source.web?.title || source.web?.uri}</span></a></li>))}</ul></div>}
-                    </div>
-                );
-            };
-            return <div className="bg-gray-800/50 backdrop-blur-sm border border-pink-400/50 rounded-2xl p-6 shadow-lg flex flex-col w-full min-h-[300px] justify-center items-center">{renderContent()}</div>;
+        const YamahaCard = ({ searchTerm }) => {
+            const searchUrl = `https://www.print-gakufu.com/search/result/score___keyword__${encodeURIComponent(searchTerm || '')}___subscription/`;
+            return (
+                <div className="bg-gray-800/50 backdrop-blur-sm border border-pink-400/50 rounded-2xl p-6 shadow-lg flex flex-col w-full min-h-[300px] justify-center items-center text-center">
+                    <h3 className="text-xl font-bold text-gray-200 mb-6">「ぷりんと楽譜」で検索</h3>
+                    <p className="text-gray-400 mb-6">
+                        「<span className="font-bold text-pink-300">{searchTerm}</span>」の楽譜を<br/>公式サイトで直接探します。<br/>(アプリ見放題プラン対象)
+                    </p>
+                    <a href={searchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 px-8 py-3 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700 transition-all duration-300 transform hover:scale-105">
+                        <ExternalLinkIcon className="h-5 w-5" />
+                        <span>公式サイトで検索結果を見る</span>
+                    </a>
+                </div>
+            );
         };
         
-        const ResultsDisplay = ({ error, playableListResult, hasSearched, searchTerm, isYamahaLoading, yamahaApiError, yamahaApiResponse }) => {
-            if (!hasSearched) return <div className="text-center p-8 mt-8 bg-gray-800/30 rounded-2xl"><h2 className="text-2xl font-bold text-white">弾ける曲を検索しよう！</h2><p className="text-gray-400 mt-2">上の検索ボックスに曲名やアーティスト名を入力して、リスト内と「ぷりんと楽譜」を同時に検索します。</p></div>;
+        const ResultsDisplay = ({ error, playableListResult, hasSearched, searchTerm }) => {
+            if (!hasSearched) return <div className="text-center p-8 mt-8 bg-gray-800/30 rounded-2xl"><h2 className="text-2xl font-bold text-white">弾ける曲を検索しよう！</h2><p className="text-gray-400 mt-2">上の検索ボックスに曲名やアーティスト名を入力して、リスト内検索と「ぷりんと楽譜」公式サイトへのリンク表示を行います。</p></div>;
             if (error) return <div className="text-center p-8 mt-8 bg-red-900/50 rounded-2xl text-red-300">{error}</div>;
-            return <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl animate-fade-in"><PlayableListCard results={playableListResult} /><YamahaCard isLoading={isYamahaLoading} error={yamahaApiError} response={yamahaApiResponse} searchTerm={searchTerm} /></div>;
+            return <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl animate-fade-in"><PlayableListCard results={playableListResult} /><YamahaCard searchTerm={searchTerm} /></div>;
         };
         
-        const SettingsModal = ({ isOpen, onClose, listInput, setListInput, isLoggedIn, onLogin, onLogout }) => {
+        const SettingsModal = ({ isOpen, onClose, onSave, listInput, setListInput, isLoggedIn, onLogin, onLogout, isSaving }) => {
             const [password, setPassword] = useState('');
             const [loginError, setLoginError] = useState(false);
             if (!isOpen) return null;
             const handleLoginClick = () => { if (onLogin(password)) { setLoginError(false); setPassword(''); } else { setLoginError(true); } };
-            const handleLogoutClick = () => { onLogout(); onClose(); };
+            const handleSaveClick = async () => { await onSave(); onClose(); };
             return (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
                     <div className="relative bg-gray-800 border border-cyan-400/50 rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4"><div className="flex items-center space-x-3"><CogIcon className="h-6 w-6 text-cyan-300"/><h2 className="text-xl font-bold text-white">設定</h2></div><button onClick={onClose} className="text-gray-400 hover:text-white"><XIcon className="h-6 w-6" /></button></div>
+                        <div className="flex justify-between items-center mb-4"><div className="flex items-center space-x-3"><CogIcon className="h-6 w-6 text-cyan-300"/><h2 className="text-xl font-bold text-white">設定</h2></div><button onClick={onClose} disabled={isSaving} className="text-gray-400 hover:text-white disabled:opacity-50"><XIcon className="h-6 w-6" /></button></div>
                         {isLoggedIn ? (
                             <Fragment>
                                 <p className="text-sm text-gray-400 mb-2">弾ける曲リストを編集 (形式: 曲名,アーティスト名)</p>
                                 <textarea value={listInput} onChange={(e) => setListInput(e.target.value)} placeholder={"例:\n夜に駆ける,YOASOBI\nPretender,Official髭男dism"} className="w-full h-48 bg-gray-900/70 border border-gray-600 rounded-lg p-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-4" />
-                                <div className="flex justify-end gap-3"><button onClick={handleLogoutClick} className="px-5 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">ログアウト</button><button onClick={onClose} className="px-5 py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700">保存して閉じる</button></div>
+                                <div className="flex justify-end gap-3"><button onClick={onLogout} disabled={isSaving} className="px-5 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 disabled:bg-red-800 disabled:cursor-not-allowed">ログアウト</button><button onClick={handleSaveClick} disabled={isSaving} className="px-5 py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 disabled:bg-cyan-800 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px]">{isSaving ? '保存中...' : '保存して閉じる'}</button></div>
                             </Fragment>
                         ) : (
                             <Fragment>
@@ -166,30 +136,65 @@
             );
         };
 
-        // --- APP ---
         const App = () => {
             const [searchTerm, setSearchTerm] = useState('');
             const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
-            const [playableListInput, setPlayableListInput] = useState(PLAYABLE_SONGS_EXAMPLE_STR);
+            const [playableListInput, setPlayableListInput] = useState('');
             const [playableListResult, setPlayableListResult] = useState([]);
             const [error, setError] = useState(null);
             const [hasSearched, setHasSearched] = useState(false);
             const [isLoggedIn, setIsLoggedIn] = useState(false);
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-            const [isYamahaLoading, setIsYamahaLoading] = useState(false);
-            const [yamahaApiError, setYamahaApiError] = useState(null);
-            const [yamahaApiResponse, setYamahaApiResponse] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+            const [isSaving, setIsSaving] = useState(false);
+
+            useEffect(() => {
+                if (!db) {
+                  setError("Firebaseの接続に失敗しました。設定を確認してください。");
+                  setIsLoading(false);
+                  setPlayableListInput(PLAYABLE_SONGS_EXAMPLE_STR);
+                  return;
+                }
+                const docRef = firebase.firestore.doc(db, SONGS_COLLECTION, PLAYABLE_LIST_DOC);
+                firebase.firestore.getDoc(docRef).then(docSnap => {
+                    if (docSnap.exists()) {
+                        setPlayableListInput(docSnap.data().list_string);
+                    } else {
+                        console.log("No such document! Creating initial one.");
+                        firebase.firestore.setDoc(docRef, { list_string: PLAYABLE_SONGS_EXAMPLE_STR });
+                        setPlayableListInput(PLAYABLE_SONGS_EXAMPLE_STR);
+                    }
+                }).catch(err => {
+                    console.error("Error fetching document: ", err);
+                    setError("データの読み込みに失敗しました。");
+                    setPlayableListInput(PLAYABLE_SONGS_EXAMPLE_STR);
+                }).finally(() => {
+                    setIsLoading(false);
+                });
+            }, []);
 
             const handleLogin = (password) => { if (password === 'admin123') { setIsLoggedIn(true); return true; } return false; };
             const handleLogout = () => { setIsLoggedIn(false); };
             
-            const executeSearch = useCallback(async (term) => {
+            const handleSave = async () => {
+                if (!db) { alert("データベースに接続できません。"); return; }
+                setIsSaving(true);
+                const docRef = firebase.firestore.doc(db, SONGS_COLLECTION, PLAYABLE_LIST_DOC);
+                try {
+                    await firebase.firestore.setDoc(docRef, { list_string: playableListInput });
+                } catch (err) {
+                    console.error("Error saving document: ", err);
+                    alert("データの保存に失敗しました。");
+                } finally {
+                    setIsSaving(false);
+                }
+            };
+            
+            const executeSearch = useCallback((term) => {
                 const trimmedTerm = term.trim();
                 setError(null);
                 setHasSearched(true);
                 setSubmittedSearchTerm(trimmedTerm);
-                setYamahaApiResponse(null);
-                setYamahaApiError(null);
 
                 if (!trimmedTerm) { setPlayableListResult([]); return; }
                 
@@ -201,17 +206,6 @@
                 
                 const filteredSongs = songsFromInput.filter(song => song.title.toLowerCase().includes(lowercasedTerm) || song.artist.toLowerCase().includes(lowercasedTerm));
                 setPlayableListResult(filteredSongs);
-                
-                setIsYamahaLoading(true);
-                try { 
-                    setYamahaApiResponse(await checkPrintGakufu(trimmedTerm));
-                } 
-                catch (e) { 
-                    setYamahaApiError(e instanceof Error ? e.message : '不明なエラー');
-                } 
-                finally { 
-                    setIsYamahaLoading(false);
-                }
             }, [playableListInput]);
 
             const handleSearch = useCallback(() => {
@@ -220,6 +214,15 @@
                 executeSearch(trimmed);
             }, [searchTerm, executeSearch]);
             
+            if (isLoading) {
+                return (
+                    <div className="min-h-screen bg-gray-900 flex flex-col justify-center items-center text-white">
+                        <LoadingSpinner />
+                        <p className="mt-4 text-lg">弾ける曲リストを読み込み中...</p>
+                    </div>
+                );
+            }
+
             return (
               <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-6 lg:p-8">
                 <div className="absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at top right, #4f46e5, transparent 50%), radial-gradient(circle at bottom left, #db2777, transparent 50%)' }}></div>
@@ -229,21 +232,19 @@
                       <p className="text-lg text-gray-300 mt-2">ピアノ配信でリクエストする前に、弾ける曲かチェック！</p>
                   </header>
                   <section className="w-full">
-                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleSearch={handleSearch} isLoading={isYamahaLoading} />
+                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleSearch={handleSearch} />
                   </section>
                   <section className="w-full mt-6 flex justify-center">
-                      <ResultsDisplay error={error} playableListResult={playableListResult} hasSearched={hasSearched} searchTerm={submittedSearchTerm} isYamahaLoading={isYamahaLoading} yamahaApiError={yamahaApiError} yamahaApiResponse={yamahaApiResponse} />
+                      <ResultsDisplay error={error} playableListResult={playableListResult} hasSearched={hasSearched} searchTerm={submittedSearchTerm} />
                   </section>
                   <footer className="text-center mt-12 text-gray-500 text-sm"><p>&copy; 2024 Piano Request Checker. For demonstration purposes only.</p></footer>
                 </main>
-                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} listInput={playableListInput} setListInput={setPlayableListInput} isLoggedIn={isLoggedIn} onLogin={handleLogin} onLogout={handleLogout} />
+                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSave={handleSave} listInput={playableListInput} setListInput={setPlayableListInput} isLoggedIn={isLoggedIn} onLogin={handleLogin} onLogout={handleLogout} isSaving={isSaving} />
               </div>
             );
         };
 
-        // --- RENDER ---
-        const root = createRoot(document.getElementById('root'));
-        root.render(<App />);
+        createRoot(document.getElementById('root')).render(<App />);
       })();
     </script>
   <script type="module" src="/index.tsx"></script>
