@@ -2,7 +2,7 @@
 // It logs search terms to Firestore to build a popularity ranking.
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore/lite';
+import { getFirestore, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
