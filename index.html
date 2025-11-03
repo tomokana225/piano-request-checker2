@@ -119,6 +119,11 @@
         const ListView = ({ songList }) => {
             const [sortOrder, setSortOrder] = useState('default'); // 'default', 'artist', 'title'
             const [filterGenre, setFilterGenre] = useState('all');
+            const [selectedArtist, setSelectedArtist] = useState(null);
+
+            useEffect(() => {
+                setSelectedArtist(null);
+            }, [sortOrder, filterGenre]);
 
             const genres = useMemo(() => ['all', ...new Set(songList.map(s => s.genre).filter(Boolean))], [songList]);
             
@@ -132,23 +137,26 @@
                     return list.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
                 }
                 if (sortOrder === 'artist') {
-                    const groupedByArtist = list.reduce((acc, song) => {
-                        acc[song.artist] = acc[song.artist] || [];
-                        acc[song.artist].push(song);
-                        return acc;
-                    }, {});
-                    Object.values(groupedByArtist).forEach(songs => songs.sort((a, b) => a.title.localeCompare(b.title, 'ja')));
-                    const sortedArtists = Object.keys(groupedByArtist).sort((a, b) => a.localeCompare(b, 'ja'));
-                    return sortedArtists.map(artist => ({ artist, songs: groupedByArtist[artist] }));
+                    const artists = [...new Set(list.map(s => s.artist))];
+                    return artists.sort((a, b) => a.localeCompare(b, 'ja'));
                 }
                 return list; // default order
             }, [songList, sortOrder, filterGenre]);
+            
+            const songsForSelectedArtist = useMemo(() => {
+                if (!selectedArtist) return [];
+                let filteredSongs = songList.filter(song => song.artist === selectedArtist);
+                if (filterGenre !== 'all') {
+                    filteredSongs = filteredSongs.filter(song => song.genre === filterGenre);
+                }
+                return filteredSongs.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
+            }, [selectedArtist, songList, filterGenre]);
 
             return (
                 <div className="w-full max-w-4xl mt-6 animate-fade-in">
                     <div className="bg-gray-800/50 backdrop-blur-sm border border-cyan-400/50 rounded-2xl p-6 shadow-lg">
                         <div className="flex flex-wrap items-center justify-between mb-4 gap-4">
-                            <h3 className="text-xl font-bold text-white flex items-center gap-3"><ListBulletIcon className="w-6 h-6 text-cyan-300"/>弾ける曲リスト一覧</h3>
+                            <h3 className="text-xl font-bold text-white flex items-center gap-3"><ListBulletIcon className="w-6 h-6 text-cyan-300"/>{selectedArtist ? `「${selectedArtist}」の曲一覧` : '弾ける曲リスト一覧'}</h3>
                             <div className="flex items-center gap-2">
                                 <span className="text-sm text-gray-400 mr-2">ソート:</span>
                                 <button onClick={() => setSortOrder('artist')} className={`px-4 py-1 text-sm rounded-full ${sortOrder === 'artist' ? 'bg-cyan-600 text-white font-bold' : 'bg-gray-700 hover:bg-gray-600'}`}>アーティスト順</button>
@@ -169,40 +177,50 @@
                         <div className="max-h-[500px] overflow-y-auto pr-4 custom-scrollbar">
                             {songList.length === 0 ? (
                                 <p className="text-center text-gray-400 py-8">リストに曲が登録されていません。</p>
-                            ) : (
-                                sortOrder === 'artist' ? (
-                                    <div className="space-y-4">
-                                        {sortedAndFilteredList.map(({ artist, songs }) => (
-                                            <div key={artist}>
-                                                <h4 className="font-bold text-lg text-cyan-300 border-b border-cyan-400/30 pb-1 mb-2">{artist}</h4>
-                                                <ul className="space-y-1 list-disc list-inside">
-                                                    {songs.map(song => (
-                                                        <li key={song.title} className="text-gray-200 ml-4 flex items-center gap-2">
-                                                          {song.title}
-                                                          {song.isNew && <span className="text-xs font-bold text-pink-400 bg-pink-900/50 px-2 py-0.5 rounded-full">NEW!</span>}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        ))}
+                            ) : sortOrder === 'artist' ? (
+                                selectedArtist ? (
+                                    <div>
+                                        <button onClick={() => setSelectedArtist(null)} className="inline-flex items-center gap-2 px-4 py-2 mb-4 text-sm font-bold text-cyan-200 bg-cyan-800/50 rounded-full hover:bg-cyan-700/70 transition-colors">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                            アーティスト一覧に戻る
+                                        </button>
+                                        <ul className="space-y-1 list-disc list-inside">
+                                            {songsForSelectedArtist.map(song => (
+                                                <li key={song.title} className="text-gray-200 ml-4 flex items-center gap-2">
+                                                  {song.title}
+                                                  {song.isNew && <span className="text-xs font-bold text-pink-400 bg-pink-900/50 px-2 py-0.5 rounded-full">NEW!</span>}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
                                 ) : (
-                                    <ul className="space-y-2">
-                                        {sortedAndFilteredList.map((song, i) => (
-                                            <li key={i} className="flex items-center justify-between text-white p-2 rounded-md hover:bg-white/10">
-                                                <div className="flex items-center gap-3">
-                                                    <MusicNoteIcon className="h-5 w-5 text-cyan-400" />
-                                                    <span>
-                                                        <strong>{song.title}</strong>
-                                                        {song.isNew && <span className="ml-2 text-xs font-bold text-pink-400 bg-pink-900/50 px-2 py-0.5 rounded-full">NEW!</span>}
-                                                        - <span className="text-gray-400">{song.artist}</span>
-                                                    </span>
-                                                </div>
-                                                {song.genre && <span className="text-xs text-gray-300 bg-gray-700/80 px-2 py-1 rounded-full">{song.genre}</span>}
+                                    <ul className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        {sortedAndFilteredList.map(artist => (
+                                            <li key={artist}>
+                                                <button onClick={() => setSelectedArtist(artist)} className="w-full text-left p-3 rounded-lg text-gray-200 bg-white/5 hover:bg-white/10 transition-colors duration-200 flex items-center gap-3">
+                                                   <MusicNoteIcon className="h-5 w-5 text-cyan-400 opacity-60 flex-shrink-0"/>
+                                                   <span className="truncate">{artist}</span>
+                                                </button>
                                             </li>
                                         ))}
                                     </ul>
                                 )
+                            ) : (
+                                <ul className="space-y-2">
+                                    {sortedAndFilteredList.map((song, i) => (
+                                        <li key={i} className="flex items-center justify-between text-white p-2 rounded-md hover:bg-white/10">
+                                            <div className="flex items-center gap-3">
+                                                <MusicNoteIcon className="h-5 w-5 text-cyan-400" />
+                                                <span>
+                                                    <strong>{song.title}</strong>
+                                                    {song.isNew && <span className="ml-2 text-xs font-bold text-pink-400 bg-pink-900/50 px-2 py-0.5 rounded-full">NEW!</span>}
+                                                    - <span className="text-gray-400">{song.artist}</span>
+                                                </span>
+                                            </div>
+                                            {song.genre && <span className="text-xs text-gray-300 bg-gray-700/80 px-2 py-1 rounded-full">{song.genre}</span>}
+                                        </li>
+                                    ))}
+                                </ul>
                             )}
                         </div>
                     </div>
@@ -244,19 +262,72 @@
             );
         };
 
-        const SuggestionModal = ({ song, onClose }) => {
+        const SuggestionModal = ({ song, songList, onClose }) => {
+            const [displaySong, setDisplaySong] = useState(null);
+            const [isSpinning, setIsSpinning] = useState(false);
+            const [isFinished, setIsFinished] = useState(false);
+
+            useEffect(() => {
+                if (song && songList && songList.length > 0) {
+                    setIsSpinning(true);
+                    setIsFinished(false);
+                    setDisplaySong(null);
+                    
+                    let timeouts = [];
+                    let delay = 50;
+                    let totalTime = 0;
+                    const maxSpins = 30;
+
+                    for (let i = 0; i < maxSpins; i++) {
+                        totalTime += delay;
+                        const timeoutId = setTimeout(() => {
+                            const randomIndex = Math.floor(Math.random() * songList.length);
+                            setDisplaySong(songList[randomIndex]);
+                        }, totalTime);
+                        timeouts.push(timeoutId);
+                        if (i > maxSpins * 0.7) {
+                            delay *= 1.15;
+                        } else if (i > maxSpins * 0.4) {
+                            delay *= 1.08;
+                        }
+                    }
+                    
+                    const finalTimeoutId = setTimeout(() => {
+                        setDisplaySong(song);
+                        setIsSpinning(false);
+                        setIsFinished(true);
+                    }, totalTime + delay);
+                    timeouts.push(finalTimeoutId);
+                    
+                    return () => { timeouts.forEach(clearTimeout); };
+                }
+            }, [song, songList]);
+
             if (!song) return null;
+
+            const songContainerClasses = `bg-white/10 p-6 rounded-lg min-h-[120px] flex flex-col justify-center items-center transition-all duration-500 ${isFinished ? 'transform scale-105 shadow-lg shadow-pink-500/30' : ''}`;
+            const songTextClasses = `transition-opacity duration-150 ${isSpinning ? 'opacity-50' : 'opacity-100'}`;
+
             return (
-                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
+                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={isSpinning ? null : onClose}>
                     <div className="relative bg-gradient-to-br from-violet-900 to-pink-900 border border-pink-400/50 rounded-2xl p-8 w-full max-w-md text-center shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
-                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><XIcon className="h-6 w-6" /></button>
+                        {!isSpinning && <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><XIcon className="h-6 w-6" /></button>}
                         <h2 className="text-2xl font-bold text-white mb-2">こんな曲はいかが？</h2>
-                        <p className="text-gray-300 mb-6">ランダムにおすすめの曲を選んでみました！</p>
-                        <div className="bg-white/10 p-6 rounded-lg">
-                           <p className="text-3xl font-bold text-pink-300">{song.title}</p>
-                           <p className="text-lg text-gray-200 mt-1">{song.artist}</p>
+                        <p className="text-gray-300 mb-6 h-6">{isSpinning ? 'スロット回転中...' : 'ランダムにおすすめの曲を選んでみました！'}</p>
+                        <div className={songContainerClasses}>
+                           {displaySong ? (
+                               <div className={songTextClasses}>
+                                   <p className="text-3xl font-bold text-pink-300">{displaySong.title}</p>
+                                   <p className="text-lg text-gray-200 mt-1">{displaySong.artist}</p>
+                               </div>
+                           ) : (
+                               <div className="animate-pulse">
+                                   <div className="h-8 bg-pink-300/30 rounded w-3/4 mx-auto"></div>
+                                   <div className="h-5 bg-gray-200/30 rounded w-1/2 mx-auto mt-2"></div>
+                               </div>
+                           )}
                         </div>
-                        <button onClick={onClose} className="mt-6 px-6 py-2 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700">閉じる</button>
+                        <button onClick={onClose} disabled={isSpinning} className="mt-8 px-6 py-2 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700 transition-opacity duration-300 disabled:opacity-50 disabled:cursor-not-allowed">閉じる</button>
                     </div>
                 </div>
             );
@@ -382,8 +453,6 @@
                       {viewMode === 'search' ? (
                           <section className="w-full flex flex-col items-center">
                             <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleSearch={handleSearch} disabled={isLoading} />
-                            <DonationBanner />
-                            <TwitcastBanner />
                             <div className="w-full mt-6 flex justify-center">
                               <SearchResultsDisplay error={error} playableListResult={playableListResult} hasSearched={hasSearched} searchTerm={submittedSearchTerm} />
                             </div>
@@ -391,12 +460,16 @@
                       ) : (
                           <ListView songList={songList} />
                       )}
+                      <div className="w-full flex flex-col items-center">
+                        <DonationBanner />
+                        <TwitcastBanner />
+                      </div>
                     </Fragment>
                   )}
                   <footer className="text-center mt-12 text-gray-500 text-sm"><p>&copy; 2024 リクエスト曲を検索. For demonstration purposes only.</p></footer>
                 </main>
                 <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} listInput={playableListInput} onSave={handleSaveSettings} isLoggedIn={isLoggedIn} onLogin={handleLogin} onLogout={handleLogout} />
-                <SuggestionModal song={suggestedSong} onClose={() => setSuggestedSong(null)} />
+                <SuggestionModal song={suggestedSong} songList={songList} onClose={() => setSuggestedSong(null)} />
               </div>
             );
         };
