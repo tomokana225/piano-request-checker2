@@ -49,7 +49,7 @@
         const { createRoot } = ReactDOM;
 
         // --- ICONS (as simple functional components) ---
-        const Icon = ({ children, className }) => <svg className={className} xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>{children}</svg>;
+        const Icon = ({ children, className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>{children}</svg>;
         const SearchIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></Icon>;
         const XIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></Icon>;
         const PlusIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></Icon>;
@@ -815,40 +815,29 @@ HANABI,Mr.Children,J-Pop
                 </header>
                 
                 <div className="flex justify-center items-center gap-2 md:gap-4 mb-8">
-                    <button onClick={() => setMode('search')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 ${mode === 'search' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}><SearchIcon className="h-5 w-5 inline-block mr-2"/>検索</button>
-                    <button onClick={() => setMode('list')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 ${mode === 'list' ? 'bg-cyan-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}><ListBulletIcon className="h-5 w-5 inline-block mr-2"/>一覧</button>
-                    <button onClick={() => setMode('ranking')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 ${mode === 'ranking' ? 'bg-yellow-500 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'}`}><TrendingUpIcon className="h-5 w-5 inline-block mr-2"/>ランキング</button>
+                    <button onClick={() => setMode('search')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'search' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><SearchIcon className="h-6 w-6" /> <span className="hidden md:inline">曲を検索</span></button>
+                    <button onClick={() => setMode('list')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'list' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><ListBulletIcon className="h-6 w-6" /> <span className="hidden md:inline">曲リスト</span></button>
+                    <button onClick={() => setMode('ranking')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'ranking' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><TrendingUpIcon className="h-6 w-6" /> <span className="hidden md:inline">ランキング</span></button>
+                    <button onClick={() => setIsSuggestOpen(true)} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 flex items-center gap-2 bg-teal-500 text-white hover:bg-teal-600 shadow-lg`}><GiftIcon className="h-6 w-6" /> <span className="hidden md:inline">おまかせ</span></button>
                 </div>
 
-                {mode === 'search' ? (
-                  <div className="animate-fade-in">
-                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleSearch={handleSearch} disabled={isLoading} />
-                    <SearchResults results={searchResults} isLoading={isLoading && searchTerm.trim() !== '' && !searchResults} />
-                    <div className="w-full max-w-2xl mx-auto mt-8 text-center">
-                        <button onClick={() => setIsSuggestOpen(true)} className="inline-flex items-center gap-3 px-6 py-3 bg-teal-500 text-white font-bold rounded-full hover:bg-teal-600 transition-all duration-300 transform hover:scale-105 shadow-md">
-                            <GiftIcon className="h-6 w-6" />
-                            <span>おまかせ選曲</span>
-                        </button>
+                <main>
+                  {mode === 'search' && (
+                    <div className="animate-fade-in">
+                      <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleSearch={handleSearch} disabled={isLoading} />
+                      <SearchResults results={searchResults} isLoading={isLoading} />
+                      <DonationBanner />
+                      <TwitcastBanner />
                     </div>
-                  </div>
-                ) : mode === 'list' ? (
-                  <ListView songs={songs} rankings={rankings} />
-                ) : (
-                  <RankingView songs={songs} rankingList={rankingList} />
-                )}
-
-                <div className="w-full max-w-2xl mx-auto mt-12 border-t border-gray-700 pt-8">
-                    <DonationBanner />
-                    <TwitcastBanner />
-                </div>
+                  )}
+                  {mode === 'list' && <ListView songs={songs} rankings={rankings}/>}
+                  {mode === 'ranking' && <RankingView songs={songs} rankingList={rankingList} />}
+                </main>
                 
-                <footer className="text-center mt-16 text-gray-500">
-                  <p>&copy; 2024 tomo_piano. All rights reserved.</p>
-                </footer>
+                <AdminModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} songs={songs} onSave={handleSaveSongs} />
+                <SuggestSongModal isOpen={isSuggestOpen} onClose={() => setIsSuggestOpen(false)} songs={songs} onSelect={handleCopyToClipboard}/>
+
               </div>
-              
-              <AdminModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} songs={songs} onSave={handleSaveSongs} />
-              <SuggestSongModal isOpen={isSuggestOpen} onClose={() => setIsSuggestOpen(false)} songs={songs} onSelect={handleCopyToClipboard} />
             </div>
           );
         };
