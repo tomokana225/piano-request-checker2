@@ -1,400 +1,186 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Piano Request Checker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body {
-      background-color: #1a202c;
-      color: #e2e8f0;
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-    }
-    .main-container {
-      max-width: 1024px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-    .card {
-      background-color: #2d3748;
-      border-radius: 0.5rem;
-      padding: 1.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(0, 0, 0, 0.75);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 50;
-    }
-    .modal-content {
-      background-color: #2d3748;
-      padding: 2rem;
-      border-radius: 0.5rem;
-      width: 90%;
-      max-width: 500px;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    .loading-spinner {
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top-color: #63b3ed;
-      width: 3rem;
-      height: 3rem;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-  </style>
-  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <head>
+    <meta charset="utf-8" />
+    <base href="https://tomokana225.github.io/piano-request-checker2/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Piano Request Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@300;400;500&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Noto Sans JP', sans-serif; }
+      h1, h2, h3, h4, h5, h6 { font-family: 'Kiwi Maru', serif; }
+      .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 <script type="importmap">
 {
   "imports": {
-    "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/"
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
 }
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body>
-  <div id="root"></div>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react,typescript">
+      // All application code is consolidated into this single script.
+      // No other .ts or .tsx files are needed.
+      (() => {
+        const { useState, useCallback, Fragment } = React;
+        const { createRoot } = ReactDOM;
 
-  <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+        // --- ICONS (as simple functional components) ---
+        const Icon = ({ children, className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>{children}</svg>;
+        const SearchIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></Icon>;
+        const MusicNoteIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-13c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></Icon>;
+        const XCircleIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></Icon>;
+        const CogIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></Icon>;
+        const XIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></Icon>;
+        const ExternalLinkIcon = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></Icon>;
 
-    // --- UTILITY FUNCTIONS ---
-    const parseSongs = (text) => {
-      if (!text || typeof text !== 'string') return [];
-      return text.split('\n').map(line => {
-        const parts = line.split(',');
-        return { title: parts[0]?.trim() || '', artist: parts[1]?.trim() || '' };
-      }).filter(song => song.title);
-    };
+        // --- CONSTANTS ---
+        const PLAYABLE_SONGS_EXAMPLE_STR = "夜に駆ける,YOASOBI\nPretender,Official髭男dism\nLemon,米津玄師\n紅蓮華,LiSA\nドライフラワー,優里\n白日,King Gnu\nマリーゴールド,あいみょん\n猫,DISH//\nうっせぇわ,Ado\n廻廻奇譚,Eve\n炎,LiSA\nCry Baby,Official髭男dism\nアイドル,YOASOBI\nKICK BACK,米津玄師\n新時代,Ado\n旅路,藤井風\n何なんw,藤井風\ngrace,藤井風\nきらり,藤井風";
 
-    const formatSongs = (songs) => {
-      return songs.map(song => `${song.title},${song.artist}`).join('\n');
-    };
-
-    // --- ICON COMPONENTS ---
-    const SearchIcon = () => (
-      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-    );
-    const SettingsIcon = () => (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-    );
-
-    // --- MAIN COMPONENTS ---
-
-    function SettingsModal({ songs, onSave, onClose, onLogin, isAdmin, isDefaultPassword }) {
-      const [password, setPassword] = useState('');
-      const [songText, setSongText] = useState(formatSongs(songs));
-      const [isSaving, setIsSaving] = useState(false);
-      const [error, setError] = useState('');
-
-      const handleSave = async () => {
-        setIsSaving(true);
-        setError('');
-        try {
-          const parsedSongs = parseSongs(songText);
-          const formattedText = formatSongs(parsedSongs);
-          setSongText(formattedText); // Normalize text before saving
-          await onSave(formattedText);
-          onClose();
-        } catch (e) {
-          setError(`保存に失敗しました:\n${e.message}`);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-      
-      const handleLogin = (e) => {
-        e.preventDefault();
-        onLogin(password);
-      };
-
-      if (!isAdmin) {
-        return (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h2 className="text-xl font-bold mb-4">管理者ログイン</h2>
-              {isDefaultPassword && (
-                <div className="bg-yellow-900 border-l-4 border-yellow-500 text-yellow-100 p-4 mb-4 rounded">
-                  <p className="font-bold">セキュリティ警告</p>
-                  <p>初期パスワードが使用されています。コード内の<code className="bg-gray-800 px-1 rounded">ADMIN_PASSWORD</code>を変更してください。</p>
-                </div>
-              )}
-              <form onSubmit={handleLogin}>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-700 text-white rounded p-2 mb-4"
-                  placeholder="パスワード"
-                />
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={onClose} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
-                    キャンセル
-                  </button>
-                  <button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
-                    ログイン
-                  </button>
-                </div>
-              </form>
-            </div>
+        // --- COMPONENTS ---
+        const SearchBar = ({ searchTerm, setSearchTerm, handleSearch }) => (
+          <div className="relative w-full max-w-xl mx-auto">
+            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="曲名やアーティスト名で検索..." className="w-full pl-5 pr-28 py-4 text-lg bg-gray-700/50 border border-gray-600 rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all duration-300 shadow-lg" />
+            <button onClick={handleSearch} className="absolute inset-y-0 right-2 my-2 flex items-center px-6 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700 transition-colors duration-300"><SearchIcon className="h-6 w-6 mr-2" /> <span className="font-bold">検索</span></button>
           </div>
         );
-      }
-
-      return (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2 className="text-xl font-bold mb-2">弾ける曲リストを編集</h2>
-            <p className="text-sm text-gray-400 mb-4">
-              1行に1曲、「曲名,アーティスト名」の形式で入力してください。
-            </p>
-            <textarea
-              className="w-full h-64 bg-gray-800 text-white rounded p-2 font-mono text-sm"
-              value={songText}
-              onChange={(e) => setSongText(e.target.value)}
-            />
-            {error && <pre className="text-red-400 mt-2 bg-gray-900 p-2 rounded whitespace-pre-wrap text-sm">{error}</pre>}
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={onClose} disabled={isSaving} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50">
-                キャンセル
-              </button>
-              <button onClick={handleSave} disabled={isSaving} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50">
-                {isSaving ? '保存中...' : '保存して閉じる'}
-              </button>
+        
+        const PlayableListCard = ({ results }) => (
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-cyan-400/50 rounded-2xl p-6 shadow-lg flex flex-col w-full min-h-[300px]">
+                <h3 className="text-xl font-bold text-gray-200 mb-4">弾ける曲リスト 検索結果</h3>
+                <div className="flex-grow">
+                    {results.length > 0 ? (<ul className="space-y-3">{results.map((song, i) => (<li key={i} className="flex items-center text-white animate-fade-in"><MusicNoteIcon className="h-5 w-5 mr-3 text-cyan-400" /><span><strong>{song.title}</strong> - {song.artist}</span></li>))}</ul>
+                    ) : (<div className="flex items-center justify-center h-full space-x-4"><XCircleIcon className="h-8 w-8 text-gray-500" /><div><p className="text-lg font-semibold text-white">見つかりませんでした</p><p className="text-gray-400">リスト内に見つかりません。</p></div></div>)}
+                </div>
             </div>
-          </div>
-        </div>
-      );
-    }
-
-    function SearchBar({ value, onChange }) {
-      return (
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="曲名やアーティスト名で検索..."
-            className="w-full bg-gray-700 text-white rounded-full py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-          />
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <SearchIcon />
-          </div>
-        </div>
-      );
-    }
-
-    function ResultsDisplay({ filteredSongs, query }) {
-      const GAKUFU_URL = `https://www.print-gakufu.com/search/result/score___keyword__${encodeURIComponent(query)}___subscription/`;
-
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          <div className="card">
-            <h2 className="text-lg font-bold mb-4">あなたの弾ける曲リスト</h2>
-            {query && filteredSongs.length > 0 && (
-              <ul className="space-y-2">
-                {filteredSongs.map((song, index) => (
-                  <li key={index} className="p-2 bg-gray-700 rounded">
-                    <span className="font-semibold">{song.title}</span>
-                    <span className="text-gray-400 ml-2">{song.artist}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {query && filteredSongs.length === 0 && (
-              <p className="text-gray-400">リスト内に見つかりませんでした。</p>
-            )}
-            {!query && (
-              <p className="text-gray-400">検索すると、ここに結果が表示されます。</p>
-            )}
-          </div>
-          <div className="card">
-            <h2 className="text-lg font-bold mb-4">ヤマハ「ぷりんと楽譜」</h2>
-            {query ? (
-              <div>
-                <p className="text-gray-300 mb-4">
-                  「{query}」の検索結果を公式サイトで確認できます。
-                </p>
-                <a
-                  href={GAKUFU_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
-                >
-                  公式サイトで検索結果を見る
-                </a>
-              </div>
-            ) : (
-              <p className="text-gray-400">
-                検索すると、公式サイトへのリンクが表示されます。
-              </p>
-            )}
-          </div>
-        </div>
-      );
-    }
-    
-    function App() {
-      const [songs, setSongs] = useState([]);
-      const [initialSongs, setInitialSongs] = useState([]);
-      const [searchQuery, setSearchQuery] = useState('');
-      const [isLoading, setIsLoading] = useState(true);
-      const [error, setError] = useState(null);
-      const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-      const [isAdmin, setIsAdmin] = useState(false);
-      
-      // ▼▼▼【重要】このパスワードを、あなただけが知っている複雑なものに変更してください ▼▼▼
-      const ADMIN_PASSWORD = "change_this_password"; 
-      // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
-      useEffect(() => {
-        const fetchSongs = async () => {
-          try {
-            const response = await fetch('/api/songs');
-            if (!response.ok) {
-              let errorBody = await response.text();
-              let serverDetails = '';
-              try {
-                const errorJson = JSON.parse(errorBody);
-                serverDetails = errorJson.details || errorBody;
-              } catch (parseErr) {
-                serverDetails = errorBody;
-              }
-              const errorMessage = `サーバーからのデータ取得に失敗しました。\nステータスコード: ${response.status}\nサーバーからのメッセージ:\n${serverDetails}`;
-              throw new Error(errorMessage);
-            }
-            const data = await response.json();
-            const parsed = parseSongs(data.list_string);
-            setSongs(parsed);
-            setInitialSongs(parsed);
-          } catch (e) {
-            console.error("ドキュメントの読み込みエラー: ", e);
-            let finalMessage = `データベースへの接続に失敗しました。\nCloudflareの環境変数やFirebaseのルールを確認してください。\n\nエラー詳細:\n${e.message}`;
-            if (e.message.includes('Failed to fetch')) {
-              finalMessage += `\n\nヒント: ネットワーク接続を確認するか、しばらくしてから再試行してください。CORSポリシーの問題も考えられます。`;
-            }
-            finalMessage += `\n\nそれでも解決しない場合は、ブラウザのキャッシュをクリア（Ctrl+Shift+R または Cmd+Shift+R）してみてください。`;
-            setError(finalMessage);
-          } finally {
-            setIsLoading(false);
-          }
+        );
+        
+        const YamahaCard = ({ searchTerm }) => {
+            const searchUrl = `https://www.print-gakufu.com/search/result/score___keyword__${encodeURIComponent(searchTerm || '')}___subscription/`;
+            return (
+                <div className="bg-gray-800/50 backdrop-blur-sm border border-pink-400/50 rounded-2xl p-6 shadow-lg flex flex-col w-full min-h-[300px] justify-center items-center text-center">
+                    <h3 className="text-xl font-bold text-gray-200 mb-6">「ぷりんと楽譜」で検索</h3>
+                    <p className="text-gray-400 mb-6">
+                        「<span className="font-bold text-pink-300">{searchTerm}</span>」の楽譜を<br/>公式サイトで直接探します。<br/>(アプリ見放題プラン対象)
+                    </p>
+                    <a href={searchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 px-8 py-3 bg-pink-600 text-white font-bold rounded-full hover:bg-pink-700 transition-all duration-300 transform hover:scale-105">
+                        <ExternalLinkIcon className="h-5 w-5" />
+                        <span>公式サイトで検索結果を見る</span>
+                    </a>
+                </div>
+            );
         };
-        fetchSongs();
-      }, []);
+        
+        const ResultsDisplay = ({ error, playableListResult, hasSearched, searchTerm }) => {
+            if (!hasSearched) return <div className="text-center p-8 mt-8 bg-gray-800/30 rounded-2xl"><h2 className="text-2xl font-bold text-white">弾ける曲を検索しよう！</h2><p className="text-gray-400 mt-2">上の検索ボックスに曲名やアーティスト名を入力して、リスト内検索と「ぷりんと楽譜」公式サイトへのリンク表示を行います。</p></div>;
+            if (error) return <div className="text-center p-8 mt-8 bg-red-900/50 rounded-2xl text-red-300">{error}</div>;
+            return <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl animate-fade-in"><PlayableListCard results={playableListResult} /><YamahaCard searchTerm={searchTerm} /></div>;
+        };
+        
+        const SettingsModal = ({ isOpen, onClose, listInput, setListInput, isLoggedIn, onLogin, onLogout }) => {
+            const [password, setPassword] = useState('');
+            const [loginError, setLoginError] = useState(false);
+            if (!isOpen) return null;
+            const handleLoginClick = () => { if (onLogin(password)) { setLoginError(false); setPassword(''); } else { setLoginError(true); } };
+            const handleLogoutClick = () => { onLogout(); onClose(); };
+            return (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
+                    <div className="relative bg-gray-800 border border-cyan-400/50 rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4"><div className="flex items-center space-x-3"><CogIcon className="h-6 w-6 text-cyan-300"/><h2 className="text-xl font-bold text-white">設定</h2></div><button onClick={onClose} className="text-gray-400 hover:text-white"><XIcon className="h-6 w-6" /></button></div>
+                        {isLoggedIn ? (
+                            <Fragment>
+                                <p className="text-sm text-gray-400 mb-2">弾ける曲リストを編集 (形式: 曲名,アーティスト名)</p>
+                                <textarea value={listInput} onChange={(e) => setListInput(e.target.value)} placeholder={"例:\n夜に駆ける,YOASOBI\nPretender,Official髭男dism"} className="w-full h-48 bg-gray-900/70 border border-gray-600 rounded-lg p-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-4" />
+                                <div className="flex justify-end gap-3"><button onClick={handleLogoutClick} className="px-5 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">ログアウト</button><button onClick={onClose} className="px-5 py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700">保存して閉じる</button></div>
+                            </Fragment>
+                        ) : (
+                            <Fragment>
+                                <p className="text-sm text-gray-400 mb-4">管理者としてログインすると、弾ける曲リストを編集できます。</p>
+                                <div className="flex items-center gap-3"><input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setLoginError(false); }} onKeyDown={(e) => e.key === 'Enter' && handleLoginClick()} placeholder="パスワード" className={`flex-grow bg-gray-900/70 border ${loginError ? 'border-red-500' : 'border-gray-600'} rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500`} /><button onClick={handleLoginClick} className="px-5 py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700">ログイン</button></div>
+                                {loginError && <p className="text-red-400 text-sm mt-2">パスワードが違います。</p>}
+                            </Fragment>
+                        )}
+                    </div>
+                </div>
+            );
+        };
 
-      const handleSaveSongs = async (songText) => {
-          const response = await fetch('/api/songs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ list_string: songText }),
-          });
-          if (!response.ok) {
-            let errorBody = await response.text();
-            let serverDetails = '';
-            try {
-                const errorJson = JSON.parse(errorBody);
-                serverDetails = errorJson.details || errorBody;
-            } catch (parseErr) {
-                serverDetails = errorBody;
-            }
-            const errorMessage = `ステータスコード: ${response.status}\nサーバーからのメッセージ:\n${serverDetails || '(空)'}`;
-            throw new Error(errorMessage);
-          }
-          const parsed = parseSongs(songText);
-          setSongs(parsed);
-          setInitialSongs(parsed);
-      };
-      
-      const handleLogin = (password) => {
-        if (password === ADMIN_PASSWORD) {
-          setIsAdmin(true);
-        } else {
-          alert('パスワードが違います。');
-        }
-      };
-      
-      const isDefaultPassword = ADMIN_PASSWORD === "change_this_password";
+        // --- APP ---
+        const App = () => {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
+            const [playableListInput, setPlayableListInput] = useState(PLAYABLE_SONGS_EXAMPLE_STR);
+            const [playableListResult, setPlayableListResult] = useState([]);
+            const [error, setError] = useState(null);
+            const [hasSearched, setHasSearched] = useState(false);
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-      const filteredSongs = useMemo(() => {
-        if (!searchQuery) return [];
-        const lowerCaseQuery = searchQuery.toLowerCase();
-        return songs.filter(
-          song =>
-            song.title.toLowerCase().includes(lowerCaseQuery) ||
-            song.artist.toLowerCase().includes(lowerCaseQuery)
-        );
-      }, [searchQuery, songs]);
+            const handleLogin = (password) => { if (password === 'admin123') { setIsLoggedIn(true); return true; } return false; };
+            const handleLogout = () => { setIsLoggedIn(false); };
+            
+            const executeSearch = useCallback((term) => {
+                const trimmedTerm = term.trim();
+                setError(null);
+                setHasSearched(true);
+                setSubmittedSearchTerm(trimmedTerm);
 
-      if (isLoading) {
-        return (
-          <div className="flex justify-center items-center h-screen">
-            <div className="loading-spinner"></div>
-          </div>
-        );
-      }
+                if (!trimmedTerm) { setPlayableListResult([]); return; }
+                
+                const lowercasedTerm = trimmedTerm.toLowerCase();
+                const songsFromInput = playableListInput.split('\n').map(line => {
+                    const parts = line.split(/[,、]/);
+                    return parts.length >= 2 ? { title: parts[0].trim(), artist: parts[1].trim() } : null;
+                }).filter(Boolean);
+                
+                const filteredSongs = songsFromInput.filter(song => song.title.toLowerCase().includes(lowercasedTerm) || song.artist.toLowerCase().includes(lowercasedTerm));
+                setPlayableListResult(filteredSongs);
+            }, [playableListInput]);
 
-      if (error) {
-        return (
-          <div className="main-container text-center">
-            <h1 className="text-2xl font-bold text-red-400 mb-4">エラーが発生しました</h1>
-            <pre className="bg-gray-800 text-left p-4 rounded whitespace-pre-wrap">{error}</pre>
-          </div>
-        );
-      }
+            const handleSearch = useCallback(() => {
+                const trimmed = searchTerm.trim();
+                if (trimmed === '管理.passkey') { setIsSettingsOpen(true); setSearchTerm(''); return; }
+                executeSearch(trimmed);
+            }, [searchTerm, executeSearch]);
+            
+            return (
+              <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-6 lg:p-8">
+                <div className="absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at top right, #4f46e5, transparent 50%), radial-gradient(circle at bottom left, #db2777, transparent 50%)' }}></div>
+                <main className="relative z-10 container mx-auto max-w-4xl flex flex-col items-center">
+                  <header className="text-center my-8 md:my-12">
+                      <div className="inline-block bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500 mb-2"><h1 className="text-4xl md:text-5xl font-bold">Piano Request Checker</h1></div>
+                      <p className="text-lg text-gray-300 mt-2">ピアノ配信でリクエストする前に、弾ける曲かチェック！</p>
+                  </header>
+                  <section className="w-full">
+                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleSearch={handleSearch} />
+                  </section>
+                  <section className="w-full mt-6 flex justify-center">
+                      <ResultsDisplay error={error} playableListResult={playableListResult} hasSearched={hasSearched} searchTerm={submittedSearchTerm} />
+                  </section>
+                  <footer className="text-center mt-12 text-gray-500 text-sm"><p>&copy; 2024 Piano Request Checker. For demonstration purposes only.</p></footer>
+                </main>
+                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} listInput={playableListInput} setListInput={setPlayableListInput} isLoggedIn={isLoggedIn} onLogin={handleLogin} onLogout={handleLogout} />
+              </div>
+            );
+        };
 
-      return (
-        <div className="main-container">
-          <header className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-white">Piano Request Checker</h1>
-            <button onClick={() => setIsSettingsOpen(true)} className="text-gray-400 hover:text-white">
-              <SettingsIcon />
-            </button>
-          </header>
-
-          <main>
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
-            <ResultsDisplay filteredSongs={filteredSongs} query={searchQuery} />
-          </main>
-          
-          {isSettingsOpen && (
-            <SettingsModal 
-              songs={initialSongs} 
-              onClose={() => {
-                setIsSettingsOpen(false);
-                setIsAdmin(false); // Reset admin state on close
-              }}
-              onSave={handleSaveSongs}
-              onLogin={handleLogin}
-              isAdmin={isAdmin}
-              isDefaultPassword={isDefaultPassword}
-            />
-          )}
-        </div>
-      );
-    }
-
-    ReactDOM.render(<App />, document.getElementById('root'));
-
-  </script>
-<script type="module" src="/index.tsx"></script>
+        // --- RENDER ---
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+      })();
+    </script>
+  <script type="module" src="/index.tsx"></script>
 </body>
 </html>
