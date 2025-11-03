@@ -98,7 +98,7 @@
 
     // --- MAIN COMPONENTS ---
 
-    function SettingsModal({ songs, onSave, onClose, onLogin, isAdmin }) {
+    function SettingsModal({ songs, onSave, onClose, onLogin, isAdmin, isDefaultPassword }) {
       const [password, setPassword] = useState('');
       const [songText, setSongText] = useState(formatSongs(songs));
       const [isSaving, setIsSaving] = useState(false);
@@ -130,6 +130,12 @@
           <div className="modal-overlay">
             <div className="modal-content">
               <h2 className="text-xl font-bold mb-4">管理者ログイン</h2>
+              {isDefaultPassword && (
+                <div className="bg-yellow-900 border-l-4 border-yellow-500 text-yellow-100 p-4 mb-4 rounded">
+                  <p className="font-bold">セキュリティ警告</p>
+                  <p>初期パスワードが使用されています。コード内の<code className="bg-gray-800 px-1 rounded">ADMIN_PASSWORD</code>を変更してください。</p>
+                </div>
+              )}
               <form onSubmit={handleLogin}>
                 <input
                   type="password"
@@ -254,7 +260,9 @@
       const [isSettingsOpen, setIsSettingsOpen] = useState(false);
       const [isAdmin, setIsAdmin] = useState(false);
       
-      const ADMIN_PASSWORD = "change_this_password"; // IMPORTANT: Change this password!
+      // ▼▼▼【重要】このパスワードを、あなただけが知っている複雑なものに変更してください ▼▼▼
+      const ADMIN_PASSWORD = "change_this_password"; 
+      // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
       useEffect(() => {
         const fetchSongs = async () => {
@@ -307,6 +315,8 @@
           alert('パスワードが違います。');
         }
       };
+      
+      const isDefaultPassword = ADMIN_PASSWORD === "change_this_password";
 
       const filteredSongs = useMemo(() => {
         if (!searchQuery) return [];
@@ -359,6 +369,7 @@
               onSave={handleSaveSongs}
               onLogin={handleLogin}
               isAdmin={isAdmin}
+              isDefaultPassword={isDefaultPassword}
             />
           )}
         </div>
