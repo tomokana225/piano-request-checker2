@@ -34,7 +34,7 @@
       // All application code is consolidated into this single script.
       // No other .ts or .tsx files are needed.
       (() => {
-        const { useState, useCallback, Fragment } = React;
+        const { useState, useCallback, Fragment, useEffect } = React;
         const { createRoot } = ReactDOM;
 
         // --- ICONS (as simple functional components) ---
@@ -48,6 +48,7 @@
 
         // --- CONSTANTS ---
         const PLAYABLE_SONGS_EXAMPLE_STR = "夜に駆ける,YOASOBI\nPretender,Official髭男dism\nLemon,米津玄師\n紅蓮華,LiSA\nドライフラワー,優里\n白日,King Gnu\nマリーゴールド,あいみょん\n猫,DISH//\nうっせぇわ,Ado\n廻廻奇譚,Eve\n炎,LiSA\nCry Baby,Official髭男dism\nアイドル,YOASOBI\nKICK BACK,米津玄師\n新時代,Ado\n旅路,藤井風\n何なんw,藤井風\ngrace,藤井風\nきらり,藤井風";
+        const SONG_LIST_STORAGE_KEY = 'piano-request-checker-songs';
 
         // --- COMPONENTS ---
         const SearchBar = ({ searchTerm, setSearchTerm, handleSearch }) => (
@@ -89,12 +90,23 @@
             return <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl animate-fade-in"><PlayableListCard results={playableListResult} /><YamahaCard searchTerm={searchTerm} /></div>;
         };
         
-        const SettingsModal = ({ isOpen, onClose, listInput, setListInput, isLoggedIn, onLogin, onLogout }) => {
+        const SettingsModal = ({ isOpen, onClose, listInput, onSave, isLoggedIn, onLogin, onLogout }) => {
+            const [localListInput, setLocalListInput] = useState(listInput);
             const [password, setPassword] = useState('');
             const [loginError, setLoginError] = useState(false);
+
+            useEffect(() => {
+                if (isOpen) {
+                    setLocalListInput(listInput);
+                }
+            }, [isOpen, listInput]);
+
             if (!isOpen) return null;
+
             const handleLoginClick = () => { if (onLogin(password)) { setLoginError(false); setPassword(''); } else { setLoginError(true); } };
             const handleLogoutClick = () => { onLogout(); onClose(); };
+            const handleSaveClick = () => { onSave(localListInput); onClose(); };
+
             return (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
                     <div className="relative bg-gray-800 border border-cyan-400/50 rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
@@ -102,8 +114,8 @@
                         {isLoggedIn ? (
                             <Fragment>
                                 <p className="text-sm text-gray-400 mb-2">弾ける曲リストを編集 (形式: 曲名,アーティスト名)</p>
-                                <textarea value={listInput} onChange={(e) => setListInput(e.target.value)} placeholder={"例:\n夜に駆ける,YOASOBI\nPretender,Official髭男dism"} className="w-full h-48 bg-gray-900/70 border border-gray-600 rounded-lg p-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-4" />
-                                <div className="flex justify-end gap-3"><button onClick={handleLogoutClick} className="px-5 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">ログアウト</button><button onClick={onClose} className="px-5 py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700">保存して閉じる</button></div>
+                                <textarea value={localListInput} onChange={(e) => setLocalListInput(e.target.value)} placeholder={"例:\n夜に駆ける,YOASOBI\nPretender,Official髭男dism"} className="w-full h-48 bg-gray-900/70 border border-gray-600 rounded-lg p-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-4" />
+                                <div className="flex justify-end gap-3"><button onClick={handleLogoutClick} className="px-5 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">ログアウト</button><button onClick={handleSaveClick} className="px-5 py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700">保存して閉じる</button></div>
                             </Fragment>
                         ) : (
                             <Fragment>
@@ -121,15 +133,44 @@
         const App = () => {
             const [searchTerm, setSearchTerm] = useState('');
             const [submittedSearchTerm, setSubmittedSearchTerm] = useState('');
-            const [playableListInput, setPlayableListInput] = useState(PLAYABLE_SONGS_EXAMPLE_STR);
+            const [playableListInput, setPlayableListInput] = useState(() => {
+                try {
+                    const storedList = localStorage.getItem(SONG_LIST_STORAGE_KEY);
+                    return storedList === null ? PLAYABLE_SONGS_EXAMPLE_STR : storedList;
+                } catch (e) {
+                    console.error("Failed to read from localStorage", e);
+                    return PLAYABLE_SONGS_EXAMPLE_STR;
+                }
+            });
             const [playableListResult, setPlayableListResult] = useState([]);
             const [error, setError] = useState(null);
             const [hasSearched, setHasSearched] = useState(false);
             const [isLoggedIn, setIsLoggedIn] = useState(false);
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+            useEffect(() => {
+                try {
+                    const storedList = localStorage.getItem(SONG_LIST_STORAGE_KEY);
+                    if (storedList === null) {
+                        localStorage.setItem(SONG_LIST_STORAGE_KEY, PLAYABLE_SONGS_EXAMPLE_STR);
+                    }
+                } catch (e) {
+                    console.error("Failed to initialize localStorage", e);
+                }
+            }, []);
+
             const handleLogin = (password) => { if (password === 'admin123') { setIsLoggedIn(true); return true; } return false; };
             const handleLogout = () => { setIsLoggedIn(false); };
+            
+            const handleSaveSettings = (newList) => {
+                try {
+                    setPlayableListInput(newList);
+                    localStorage.setItem(SONG_LIST_STORAGE_KEY, newList);
+                } catch (e) {
+                    console.error("Failed to save to localStorage", e);
+                    setError("設定の保存に失敗しました。");
+                }
+            };
             
             const executeSearch = useCallback((term) => {
                 const trimmedTerm = term.trim();
@@ -171,7 +212,14 @@
                   </section>
                   <footer className="text-center mt-12 text-gray-500 text-sm"><p>&copy; 2024 Piano Request Checker. For demonstration purposes only.</p></footer>
                 </main>
-                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} listInput={playableListInput} setListInput={setPlayableListInput} isLoggedIn={isLoggedIn} onLogin={handleLogin} onLogout={handleLogout} />
+                <SettingsModal 
+                    isOpen={isSettingsOpen} 
+                    onClose={() => setIsSettingsOpen(false)} 
+                    listInput={playableListInput} 
+                    onSave={handleSaveSettings}
+                    isLoggedIn={isLoggedIn} 
+                    onLogin={handleLogin} 
+                    onLogout={handleLogout} />
               </div>
             );
         };
