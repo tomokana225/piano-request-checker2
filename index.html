@@ -109,7 +109,7 @@
                         <div className="flex justify-between items-center mb-4"><div className="flex items-center space-x-3"><CogIcon className="h-6 w-6 text-cyan-300"/><h2 className="text-xl font-bold text-white">設定</h2></div><button onClick={onClose} className="text-gray-400 hover:text-white"><XIcon className="h-6 w-6" /></button></div>
                         {isLoggedIn ? (
                             <Fragment>
-                                <p className="text-sm text-gray-400 mb-2">弾ける曲リストを編集 (形式: 曲名,アーティスト名)</p>
+                                <p className="text-sm text-gray-400 mb-2">弾ける曲リストを編集 (形式: 曲名,アーティスト名)。Excelから2列(曲名, アーティスト名)のコピー&ペーストも可能です。</p>
                                 <textarea value={localListInput} onChange={(e) => setLocalListInput(e.target.value)} placeholder={"例:\n夜に駆ける,YOASOBI\nPretender,Official髭男dism"} className="w-full h-48 bg-gray-900/70 border border-gray-600 rounded-lg p-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-4" />
                                 <div className="flex justify-end gap-3"><button onClick={handleLogoutClick} className="px-5 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">ログアウト</button><button onClick={handleSaveClick} className="px-5 py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700">保存して閉じる</button></div>
                             </Fragment>
@@ -162,15 +162,21 @@
             const handleSaveSettings = async (newList) => {
                 setError(null);
                 try {
+                    // Standardize the list: replace tabs with a single comma for consistency.
+                    const standardizedList = newList
+                        .split('\n')
+                        .map(line => line.replace(/\t/g, ','))
+                        .join('\n');
+
                     const response = await fetch('/songs', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ list: newList }),
+                        body: JSON.stringify({ list: standardizedList }),
                     });
                     if (!response.ok) {
                         throw new Error('Failed to save settings.');
                     }
-                    setPlayableListInput(newList);
+                    setPlayableListInput(standardizedList);
                 } catch (e) {
                     console.error("Failed to save to Firestore via API", e);
                     setError("設定の保存に失敗しました。");
@@ -187,7 +193,8 @@
                 
                 const lowercasedTerm = trimmedTerm.toLowerCase();
                 const songsFromInput = playableListInput.split('\n').map(line => {
-                    const parts = line.split(/[,、]/);
+                    // Split by comma, Japanese comma, or a tab character
+                    const parts = line.split(/[,、\t]/);
                     return parts.length >= 2 ? { title: parts[0].trim(), artist: parts[1].trim() } : null;
                 }).filter(Boolean);
                 
