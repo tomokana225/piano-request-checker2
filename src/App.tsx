@@ -21,6 +21,11 @@ interface RankingItem {
   artist: string;
 }
 
+interface RequestRankingItem {
+    id: string; // requested song title
+    count: number;
+}
+
 // --- ICON COMPONENTS ---
 interface IconProps {
   children: React.ReactNode;
@@ -41,6 +46,9 @@ const HeartIcon: React.FC<SimpleIconProps> = ({ className }) => <Icon className=
 const VideoCameraIcon: React.FC<SimpleIconProps> = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></Icon>;
 const YouTubeIcon: React.FC<SimpleIconProps> = ({ className }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.325-11.412 132.325s0 89.458 11.412 132.325c6.281 23.65 24.787 42.276 48.284 48.597C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.322 42.003 24.947 48.284-48.597 11.412-42.867-11.412-132.325-11.412-132.325s0-89.458-11.412-132.325zM232 344.473l144-88.131-144-88.131v176.262z" /></svg>);
 const TrendingUpIcon: React.FC<SimpleIconProps> = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></Icon>;
+const CloudUploadIcon: React.FC<SimpleIconProps> = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 12v9" /></Icon>;
+const CheckCircleIcon: React.FC<SimpleIconProps> = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></Icon>;
+
 const LoadingSpinner: React.FC<SimpleIconProps> = ({ className }) => (
     <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -86,8 +94,14 @@ const TwitcastBanner: React.FC = () => (
 interface SearchResultsProps {
     results: SearchResult | null;
     isLoading: boolean;
+    handleRequestSong: (term: string) => void;
+    requestStatus: 'idle' | 'sending' | 'sent' | 'error';
 }
-const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading }) => {
+const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading, handleRequestSong, requestStatus }) => {
+    useEffect(() => {
+      // This could be used to reset status on new search, but we will manage it in the main component
+    }, [results?.searchTerm]);
+    
     if (isLoading) {
         return (
             <div className="w-full max-w-2xl mx-auto mt-8 p-6 bg-gray-800/50 border border-gray-700 rounded-2xl shadow-xl animate-fade-in text-center flex flex-col items-center justify-center gap-4">
@@ -104,11 +118,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading }) => 
         <h3 className={`text-2xl font-bold ${color} mb-3`}>{title}</h3>
     );
     
-    // FIX: Define props with an interface and use React.FC to correctly type the component
-    // and resolve errors related to the special 'key' prop when used in a list.
-    interface SongResultItemProps {
-        song: Song;
-    }
+    interface SongResultItemProps { song: Song; }
     const SongResultItem: React.FC<SongResultItemProps> = ({ song }) => (
         <div className="py-3 px-2 border-b border-gray-700/50 text-left last:border-b-0 flex justify-between items-center">
             <div>
@@ -120,6 +130,23 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading }) => 
             )}
         </div>
     );
+    
+    const getRequestButtonText = () => {
+        switch (requestStatus) {
+            case 'sending': return '送信中...';
+            case 'sent': return 'リクエストしました！';
+            case 'error': return 'エラー';
+            default: return 'この曲をリクエストする';
+        }
+    };
+    
+    const getRequestButtonIcon = () => {
+        switch (requestStatus) {
+            case 'sending': return <LoadingSpinner className="h-5 w-5" />;
+            case 'sent': return <CheckCircleIcon className="h-5 w-5" />;
+            default: return <CloudUploadIcon className="h-5 w-5" />;
+        }
+    };
 
     const renderResults = () => {
         switch (results.status) {
@@ -158,7 +185,22 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading }) => 
                 return (
                     <div>
                         <ResultHeader color="text-red-400" title="見つかりませんでした" />
-                        <p className="text-gray-300">ゴメンナサイ、この曲はリストにないようです。</p>
+                        <p className="text-gray-300 mb-4">ゴメンナサイ、この曲はリストにないようです。</p>
+                        <div className="mt-4 pt-4 border-t border-gray-700/50">
+                            <button 
+                                onClick={() => handleRequestSong(results.searchTerm)}
+                                disabled={requestStatus === 'sending' || requestStatus === 'sent'}
+                                className={`inline-flex items-center gap-3 px-6 py-3 font-bold rounded-full transition-all duration-300 transform hover:scale-105 shadow-md ${
+                                    requestStatus === 'sent' ? 'bg-green-600 text-white cursor-default' : 
+                                    requestStatus === 'error' ? 'bg-red-600 text-white' : 
+                                    'bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-500'
+                                }`}
+                            >
+                                {getRequestButtonIcon()}
+                                <span>{getRequestButtonText()}</span>
+                            </button>
+                             {requestStatus === 'error' && <p className="text-red-400 text-sm mt-2">送信に失敗しました。時間をおいて再試行してください。</p>}
+                        </div>
                     </div>
                 );
             default:
@@ -180,6 +222,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading }) => 
     );
 };
 
+// ... AdminModal, SuggestSongModal, ListView components remain the same ...
 interface AdminModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -501,8 +544,6 @@ const ListView: React.FC<ListViewProps> = ({ songs, rankings }) => {
         setSelectedGenre(null);
     };
     
-    // FIX: Define props with an interface and use React.FC to correctly type the component
-    // and resolve errors related to the special 'key' prop when used in a list.
     interface SongListItemProps {
         song: Song;
         displayFormat: 'title-artist' | 'title-only';
@@ -651,6 +692,50 @@ const RankingView: React.FC<RankingViewProps> = ({ songs, rankingList }) => {
     );
 };
 
+interface RequestRankingViewProps {
+  rankingList: RequestRankingItem[];
+}
+const RequestRankingView: React.FC<RequestRankingViewProps> = ({ rankingList }) => {
+    if (!rankingList || rankingList.length === 0) {
+        return (
+            <div className="w-full max-w-2xl mx-auto mt-8 p-6 bg-gray-800/50 border border-gray-700 rounded-2xl shadow-xl animate-fade-in text-center">
+                <h2 className="text-2xl font-bold text-white mb-4">リクエストランキング</h2>
+                <p className="text-gray-400">まだリクエストされた曲はありません。見つからない曲をリクエストすると、ここに表示されます。</p>
+            </div>
+        );
+    }
+
+    const maxCount = rankingList[0]?.count || 1;
+
+    return (
+        <div className="w-full max-w-2xl mx-auto mt-8 animate-fade-in">
+            <div className="bg-gray-800/50 border border-gray-700 rounded-2xl shadow-xl overflow-hidden">
+                <h2 className="text-2xl font-bold text-white text-center p-4 bg-gray-900/30">リクエストランキング</h2>
+                <ul className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                    {rankingList.map((item, index) => {
+                        const widthPercentage = (item.count / maxCount) * 100;
+                        
+                        return (
+                            <li key={item.id} className="p-4 border-b border-gray-700/50 last:border-b-0 hover:bg-gray-700/30 transition-colors duration-200">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-2xl font-bold text-gray-400 w-8 text-center">{index + 1}</span>
+                                    <div className="flex-1 overflow-hidden">
+                                        <p className="font-bold text-lg text-white truncate">{item.id}</p>
+                                        <div className="mt-2 w-full bg-gray-700 rounded-full h-2.5">
+                                          <div className="bg-teal-500 h-2.5 rounded-full" style={{ width: `${widthPercentage}%` }}></div>
+                                        </div>
+                                    </div>
+                                     <p className="font-mono font-bold text-xl text-yellow-400 ml-4">{item.count}</p>
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
+        </div>
+    );
+};
+
 // --- MAIN APP COMPONENT ---
 function App() {
   const FALLBACK_SONGS_STR = `夜に駆ける,YOASOBI,J-Pop,new
@@ -690,11 +775,13 @@ HANABI,Mr.Children,J-Pop
   const [isLoading, setIsLoading] = useState(true);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isSuggestOpen, setIsSuggestOpen] = useState(false);
-  type Mode = 'search' | 'list' | 'ranking';
+  type Mode = 'search' | 'list' | 'ranking' | 'requests';
   const [mode, setMode] = useState<Mode>('search');
   const [rankings, setRankings] = useState<Record<string, number>>({});
   const [rankingList, setRankingList] = useState<RankingItem[]>([]);
+  const [requestRankingList, setRequestRankingList] = useState<RequestRankingItem[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'offline'>('connecting');
+  const [requestStatus, setRequestStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   const parseSongs = useCallback((str: string): Song[] => {
     if (!str) return [];
@@ -706,7 +793,6 @@ HANABI,Mr.Children,J-Pop
         title: parts[0].trim(),
         artist: parts[1].trim(),
         genre: parts[2]?.trim() || '',
-        // FIX: Add optional chaining to `toLowerCase` to prevent runtime error if parts[3] or parts[4] are undefined.
         isNew: parts[3]?.trim()?.toLowerCase() === 'new',
         status: parts[4]?.trim()?.toLowerCase() === '練習中' ? 'practicing' : 'playable',
       };
@@ -748,10 +834,23 @@ HANABI,Mr.Children,J-Pop
       }
   }, []);
 
+  const fetchRequestRankings = useCallback(async () => {
+      try {
+          const response = await fetch('/api/get-request-ranking');
+          if (!response.ok) throw new Error('Failed to fetch request rankings');
+          const data: RequestRankingItem[] = await response.json();
+          setRequestRankingList(data);
+      } catch (error) {
+          console.error("Failed to fetch request rankings:", error);
+      }
+  }, []);
+
+
   useEffect(() => {
     fetchSongs();
     fetchRankings();
-  }, [fetchSongs, fetchRankings]);
+    fetchRequestRankings();
+  }, [fetchSongs, fetchRankings, fetchRequestRankings]);
   
   const handleSaveSongs = async (newListStr: string) => {
       await fetch('/api/songs', {
@@ -762,31 +861,37 @@ HANABI,Mr.Children,J-Pop
       setSongs(parseSongs(newListStr));
   };
   
-  const logSearchTerm = (term: string) => {
+  const logSearchTerm = async (term: string) => {
       if (!term) return;
-      fetch('/api/log-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ term: term })
-      }).catch(err => console.error("Failed to log search term:", err));
+      try {
+        await fetch('/api/log-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ term: term })
+        });
+      } catch (err) {
+        console.error("Failed to log search term:", err);
+      }
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
       const trimmedSearchTerm = searchTerm.trim();
-      if (trimmedSearchTerm) {
-          logSearchTerm(trimmedSearchTerm);
-      }
-
+      setRequestStatus('idle'); // Reset request status on new search
+      
       if (trimmedSearchTerm === 'admin.passkey') {
           setIsAdminOpen(true);
           setSearchTerm('');
           return;
       }
-
+      
       if (!trimmedSearchTerm) {
           setSearchResults(null);
           return;
       }
+
+      await logSearchTerm(trimmedSearchTerm);
+      fetchRankings(); // Refetch for real-time updates
+
       setIsLoading(true);
       setSearchResults(null);
       
@@ -821,6 +926,24 @@ HANABI,Mr.Children,J-Pop
       }, 300);
   };
   
+  const handleRequestSong = async (term: string) => {
+    if (!term) return;
+    setRequestStatus('sending');
+    try {
+        const response = await fetch('/api/log-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ term })
+        });
+        if (!response.ok) throw new Error('Server responded with an error');
+        setRequestStatus('sent');
+        fetchRequestRankings(); // Refetch request rankings for real-time update
+    } catch (err) {
+        console.error("Failed to log request:", err);
+        setRequestStatus('error');
+    }
+  };
+
   const handleCopyToClipboard = (text: string) => {
       navigator.clipboard.writeText(text).then(() => {
           console.log('Copied to clipboard:', text);
@@ -844,24 +967,26 @@ HANABI,Mr.Children,J-Pop
           <p className="text-gray-300 animate-fade-in" style={{animationDelay: '0.2s'}}>弾ける曲 or ぷりんと楽譜にある曲かチェックできます</p>
         </header>
         
-        <div className="flex justify-center items-center gap-2 md:gap-4 mb-8">
-            <button onClick={() => setMode('search')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'search' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><SearchIcon className="h-6 w-6" /> <span className="hidden md:inline">曲を検索</span></button>
-            <button onClick={() => setMode('list')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'list' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><ListBulletIcon className="h-6 w-6" /> <span className="hidden md:inline">曲リスト</span></button>
-            <button onClick={() => setMode('ranking')} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'ranking' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><TrendingUpIcon className="h-6 w-6" /> <span className="hidden md:inline">ランキング</span></button>
-            <button onClick={() => setIsSuggestOpen(true)} className={`px-5 py-3 font-bold rounded-full transition-all duration-300 flex items-center gap-2 bg-teal-500 text-white hover:bg-teal-600 shadow-lg`}><GiftIcon className="h-6 w-6" /> <span className="hidden md:inline">おまかせ</span></button>
+        <div className="flex justify-center items-center gap-2 md:gap-4 mb-8 flex-wrap">
+            <button onClick={() => setMode('search')} className={`px-4 py-2 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'search' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><SearchIcon className="h-5 w-5" /> <span className="hidden md:inline">曲を検索</span></button>
+            <button onClick={() => setMode('list')} className={`px-4 py-2 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'list' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><ListBulletIcon className="h-5 w-5" /> <span className="hidden md:inline">曲リスト</span></button>
+            <button onClick={() => setMode('ranking')} className={`px-4 py-2 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'ranking' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><TrendingUpIcon className="h-5 w-5" /> <span className="hidden md:inline">人気曲</span></button>
+            <button onClick={() => setMode('requests')} className={`px-4 py-2 font-bold rounded-full transition-all duration-300 flex items-center gap-2 ${mode === 'requests' ? 'bg-pink-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'}`}><CloudUploadIcon className="h-5 w-5" /> <span className="hidden md:inline">リクエスト</span></button>
+            <button onClick={() => setIsSuggestOpen(true)} className={`px-4 py-2 font-bold rounded-full transition-all duration-300 flex items-center gap-2 bg-teal-500 text-white hover:bg-teal-600 shadow-lg`}><GiftIcon className="h-5 w-5" /> <span className="hidden md:inline">おまかせ</span></button>
         </div>
 
         <main>
           {mode === 'search' && (
             <div className="animate-fade-in">
               <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} handleSearch={handleSearch} disabled={isLoading} />
-              <SearchResults results={searchResults} isLoading={isLoading} />
+              <SearchResults results={searchResults} isLoading={isLoading} handleRequestSong={handleRequestSong} requestStatus={requestStatus} />
               <DonationBanner />
               <TwitcastBanner />
             </div>
           )}
           {mode === 'list' && <ListView songs={songs} rankings={rankings}/>}
           {mode === 'ranking' && <RankingView songs={songs} rankingList={rankingList} />}
+          {mode === 'requests' && <RequestRankingView rankingList={requestRankingList} />}
         </main>
         
         <AdminModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} songs={songs} onSave={handleSaveSongs} />

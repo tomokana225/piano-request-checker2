@@ -40,8 +40,8 @@ const parseSongs = (str) => {
             title: parts[0].trim(),
             artist: parts[1].trim(),
             genre: parts[2]?.trim() || '',
-            isNew: parts[3]?.trim().toLowerCase() === 'new',
-            status: parts[4]?.trim().toLowerCase() === '練習中' ? 'practicing' : 'playable',
+            isNew: parts[3]?.trim()?.toLowerCase() === 'new',
+            status: parts[4]?.trim()?.toLowerCase() === '練習中' ? 'practicing' : 'playable',
         };
     }).filter(Boolean);
 };
@@ -49,7 +49,6 @@ const parseSongs = (str) => {
 export async function onRequest(context) {
     const { request, env } = context;
     
-    // Handle CORS preflight requests
     if (request.method === 'OPTIONS') {
         return new Response(null, { headers: CORS_HEADERS });
     }
@@ -64,7 +63,6 @@ export async function onRequest(context) {
     try {
         app = await getFirebaseApp(env);
     } catch (e) {
-        // Fail gracefully, don't block user
         return new Response(JSON.stringify({ success: true, message: "Server config error" }), { status: 200, headers: successHeaders });
     }
 
@@ -87,28 +85,40 @@ export async function onRequest(context) {
         
         const songs = parseSongs(docSnap.data().list);
 
-        const matchedSongs = songs.filter(song =>
-            song.title.toLowerCase().includes(searchTerm) ||
-            song.artist.toLowerCase().includes(searchTerm)
-        );
+        // --- New Scoring Logic ---
+        let bestMatch = null;
+        let highestScore = -1;
 
-        if (matchedSongs.length === 0) {
+        const calculateScore = (song, term) => {
+            const songTitle = song.title.toLowerCase();
+            const songArtist = song.artist.toLowerCase();
+            let score = 0;
+            if (songTitle === term) score = 100;
+            else if (songArtist === term) score = 90;
+            else if (songTitle.startsWith(term)) score = 70;
+            else if (songArtist.startsWith(term)) score = 60;
+            else if (songTitle.includes(term)) score = 30;
+            else if (songArtist.includes(term)) score = 20;
+            return score;
+        };
+
+        for (const song of songs) {
+            const score = calculateScore(song, searchTerm);
+            if (score > highestScore) {
+                highestScore = score;
+                bestMatch = song;
+            }
+        }
+
+        if (!bestMatch) {
             return new Response(JSON.stringify({ success: true, message: "No matching songs" }), { status: 200, headers: successHeaders });
         }
         
-        const uniqueTitles = [...new Set(matchedSongs.map(s => s.title))];
         const batch = writeBatch(db);
-
-        // Firestore Lite SDK doesn't support transactions or server-side increments,
-        // so we do a read-then-write. This is acceptable for a non-critical counter.
-        for (const title of uniqueTitles) {
-            const countRef = doc(db, 'songSearchCounts', title);
-            const songData = matchedSongs.find(s => s.title === title);
-            const countDocSnap = await getDoc(countRef);
-
-            const newCount = (countDocSnap.exists() ? countDocSnap.data().count : 0) + 1;
-            batch.set(countRef, { count: newCount, artist: songData.artist }, { merge: true });
-        }
+        const countRef = doc(db, 'songSearchCounts', bestMatch.title);
+        const countDocSnap = await getDoc(countRef);
+        const newCount = (countDocSnap.exists() ? countDocSnap.data().count : 0) + 1;
+        batch.set(countRef, { count: newCount, artist: bestMatch.artist }, { merge: true });
         
         await batch.commit();
 
@@ -116,7 +126,6 @@ export async function onRequest(context) {
 
     } catch (error) {
         console.error('Logging search failed:', error);
-        // We return a success response even on failure to avoid impacting the user experience.
         return new Response(JSON.stringify({ success: true, error: "Internal logging error" }), { status: 200, headers: successHeaders });
     }
 }
