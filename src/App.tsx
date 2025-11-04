@@ -697,7 +697,7 @@ HANABI,Mr.Children,J-Pop
     setIsLoading(true);
     setConnectionStatus('connecting');
     try {
-      const response = await fetch('/songs');
+      const response = await fetch('/api/songs');
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setSongs(parseSongs(data.list));
@@ -713,7 +713,7 @@ HANABI,Mr.Children,J-Pop
   
   const fetchRankings = useCallback(async () => {
       try {
-          const response = await fetch('/get-ranking');
+          const response = await fetch('/api/get-ranking');
           if (!response.ok) throw new Error('Failed to fetch rankings');
           const data: RankingItem[] = await response.json();
           setRankingList(data);
@@ -734,7 +734,7 @@ HANABI,Mr.Children,J-Pop
   }, [fetchSongs, fetchRankings]);
   
   const handleSaveSongs = async (newListStr: string) => {
-      await fetch('/songs', {
+      await fetch('/api/songs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ list: newListStr })
@@ -744,7 +744,7 @@ HANABI,Mr.Children,J-Pop
   
   const logSearchTerm = (term: string) => {
       if (!term) return;
-      fetch('/log-search', {
+      fetch('/api/log-search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ term: term })
