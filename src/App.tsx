@@ -41,6 +41,13 @@ const HeartIcon: React.FC<SimpleIconProps> = ({ className }) => <Icon className=
 const VideoCameraIcon: React.FC<SimpleIconProps> = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></Icon>;
 const YouTubeIcon: React.FC<SimpleIconProps> = ({ className }) => (<svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.325-11.412 132.325s0 89.458 11.412 132.325c6.281 23.65 24.787 42.276 48.284 48.597C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.322 42.003 24.947 48.284-48.597 11.412-42.867-11.412-132.325-11.412-132.325s0-89.458-11.412-132.325zM232 344.473l144-88.131-144-88.131v176.262z" /></svg>);
 const TrendingUpIcon: React.FC<SimpleIconProps> = ({ className }) => <Icon className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></Icon>;
+const LoadingSpinner: React.FC<SimpleIconProps> = ({ className }) => (
+    <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+);
+
 
 // --- UI COMPONENTS ---
 interface SearchBarProps {
@@ -83,8 +90,9 @@ interface SearchResultsProps {
 const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading }) => {
     if (isLoading) {
         return (
-            <div className="w-full max-w-2xl mx-auto mt-8 text-center animate-pulse">
-                <div className="h-8 bg-gray-700 rounded w-1/2 mx-auto"></div>
+            <div className="w-full max-w-2xl mx-auto mt-8 p-6 bg-gray-800/50 border border-gray-700 rounded-2xl shadow-xl animate-fade-in text-center flex flex-col items-center justify-center gap-4">
+                <LoadingSpinner className="h-10 w-10 text-cyan-400" />
+                <p className="text-lg text-gray-300">検索中...</p>
             </div>
         );
     }
@@ -96,7 +104,12 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading }) => 
         <h3 className={`text-2xl font-bold ${color} mb-3`}>{title}</h3>
     );
     
-    const SongResultItem = ({ song }: { song: Song }) => (
+    // FIX: Define props with an interface and use React.FC to correctly type the component
+    // and resolve errors related to the special 'key' prop when used in a list.
+    interface SongResultItemProps {
+        song: Song;
+    }
+    const SongResultItem: React.FC<SongResultItemProps> = ({ song }) => (
         <div className="py-3 px-2 border-b border-gray-700/50 text-left last:border-b-0 flex justify-between items-center">
             <div>
               <p className="text-lg text-white font-bold">{song.title}</p>
@@ -488,7 +501,13 @@ const ListView: React.FC<ListViewProps> = ({ songs, rankings }) => {
         setSelectedGenre(null);
     };
     
-    const SongListItem = ({ song, displayFormat }: { song: Song, displayFormat: 'title-artist' | 'title-only' }) => {
+    // FIX: Define props with an interface and use React.FC to correctly type the component
+    // and resolve errors related to the special 'key' prop when used in a list.
+    interface SongListItemProps {
+        song: Song;
+        displayFormat: 'title-artist' | 'title-only';
+    }
+    const SongListItem: React.FC<SongListItemProps> = ({ song, displayFormat }) => {
         const searchCount = sortMode === 'popularity' ? rankings[song.title] || 0 : 0;
         return (
             <li className="flex justify-between items-center p-4 border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors duration-200 last:border-b-0">
@@ -687,8 +706,9 @@ HANABI,Mr.Children,J-Pop
         title: parts[0].trim(),
         artist: parts[1].trim(),
         genre: parts[2]?.trim() || '',
-        isNew: parts[3]?.trim().toLowerCase() === 'new',
-        status: parts[4]?.trim().toLowerCase() === '練習中' ? 'practicing' : 'playable',
+        // FIX: Add optional chaining to `toLowerCase` to prevent runtime error if parts[3] or parts[4] are undefined.
+        isNew: parts[3]?.trim()?.toLowerCase() === 'new',
+        status: parts[4]?.trim()?.toLowerCase() === '練習中' ? 'practicing' : 'playable',
       };
     }).filter((s): s is Song => s !== null);
   }, []);
