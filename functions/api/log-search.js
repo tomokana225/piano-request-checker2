@@ -2,7 +2,8 @@
 // It logs search terms to Firestore to build a popularity ranking.
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
+// Use the "lite" version of Firestore for serverless environments to avoid timeouts
+import { getFirestore, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore/lite';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
