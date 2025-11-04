@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom App Styles */
+body { font-family: 'Noto Sans JP', sans-serif; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Kiwi Maru', serif; }
+.text-shadow-lg { text-shadow: 0 0 15px rgba(0,0,0,0.5); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.custom-scrollbar::-webkit-scrollbar { 
+  width: 8px; 
+}
+.custom-scrollbar::-webkit-scrollbar-track { 
+  background: rgba(255, 255, 255, 0.1); 
+  border-radius: 10px; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background: rgba(34, 211, 238, 0.6); 
+  border-radius: 10px; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+  background: rgba(34, 211, 238, 0.8); 
+}
