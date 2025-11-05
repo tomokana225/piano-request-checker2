@@ -23,8 +23,8 @@ function App() {
     adminBlogPosts,
     uiConfig,
     rankingList,
+    artistRankingList, // Added
     requestRankingList,
-    rankings,
     connectionStatus,
     isLoading: isApiLoading,
     handleSaveSongs,
@@ -85,9 +85,9 @@ function App() {
                   fetchRequestRankings={fetchRequestRankings}
                 />;
       case 'list':
-        return <ListView songs={songs} rankings={rankings}/>;
+        return <ListView songs={songs} />;
       case 'ranking':
-        return <RankingView rankingList={rankingList} />;
+        return <RankingView songRankingList={rankingList} artistRankingList={artistRankingList} />;
       case 'requests':
         return <RequestRankingView rankingList={requestRankingList} />;
       case 'blog':

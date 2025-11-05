@@ -15,3 +15,30 @@ export const parseSongs = (str: string): Song[] => {
         };
     }).filter((song): song is Song => song !== null);
 };
+
+export const songsToString = (songs: Song[]): string => {
+    return songs.map(song => {
+        const parts = [song.title, song.artist, song.genre || ''];
+        
+        let fourthPart = '';
+        if (song.isNew) {
+            fourthPart = 'new';
+        }
+        
+        let fifthPart = '';
+        if (song.status === 'practicing') {
+            fifthPart = '練習中';
+        }
+
+        // To maintain comma structure, push even if empty
+        parts.push(fourthPart);
+        parts.push(fifthPart);
+        
+        // Trim trailing empty parts for cleaner output
+        while (parts.length > 2 && !parts[parts.length - 1]) {
+            parts.pop();
+        }
+        
+        return parts.join(',');
+    }).join('\n');
+};

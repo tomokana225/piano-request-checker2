@@ -46,6 +46,22 @@ const parseSongs = (str) => {
     }).filter(Boolean);
 };
 
+const hiraToKata = (str) => {
+  if (!str) return '';
+  return str.replace(/[\u3041-\u3096]/g, (match) => {
+    const charCode = match.charCodeAt(0) + 0x60;
+    return String.fromCharCode(charCode);
+  });
+};
+
+const normalizeForSearch = (str) => {
+  if (!str) return '';
+  const halfWidth = str.replace(/[\uff01-\uff5e]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
+  const katakana = hiraToKata(halfWidth);
+  return katakana.toLowerCase().replace(/[\s'’"”.,!&ー]+/g, '');
+};
+
+
 export async function onRequest(context) {
     const { request, env } = context;
     
@@ -70,7 +86,7 @@ export async function onRequest(context) {
 
     try {
         const { term } = await request.json();
-        const searchTerm = term?.trim().toLowerCase();
+        const searchTerm = normalizeForSearch(term);
 
         if (!searchTerm) {
             return new Response(JSON.stringify({ success: true, message: "No term provided" }), { status: 200, headers: successHeaders });
@@ -90,8 +106,8 @@ export async function onRequest(context) {
         let highestScore = -1;
 
         const calculateScore = (song, term) => {
-            const songTitle = song.title.toLowerCase();
-            const songArtist = song.artist.toLowerCase();
+            const songTitle = normalizeForSearch(song.title);
+            const songArtist = normalizeForSearch(song.artist);
             let score = 0;
             if (songTitle === term) score = 100;
             else if (songArtist === term) score = 90;

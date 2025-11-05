@@ -19,6 +19,11 @@ export interface RankingItem {
   artist: string;
 }
 
+export interface ArtistRankingItem {
+  id: string; // artist name
+  count: number;
+}
+
 export interface RequestRankingItem {
     id: string; // requested song title
     count: number;

@@ -3,7 +3,7 @@
 
 import { initializeApp } from 'firebase/app';
 // Use the "lite" version of Firestore for serverless environments to avoid timeouts
-import { getFirestore, collection, getDocs, query, orderBy, limit } from 'firebase/firestore/lite';
+import { getFirestore, collection, getDocs, query, orderBy, limit } from 'firestore/lite';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +12,6 @@ const CORS_HEADERS = {
 };
 
 async function getFirebaseApp(env) {
-    // Securely construct the Firebase config from environment variables (secrets)
     const firebaseConfig = {
         apiKey: env.FIREBASE_API_KEY,
         authDomain: env.FIREBASE_AUTH_DOMAIN,
@@ -23,7 +22,6 @@ async function getFirebaseApp(env) {
         measurementId: env.FIREBASE_MEASUREMENT_ID,
     };
     
-    // Basic validation
     if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
         throw new Error("Firebase environment variables are not set correctly.");
     }
@@ -34,7 +32,6 @@ async function getFirebaseApp(env) {
 export async function onRequest(context) {
     const { request, env } = context;
 
-    // Handle CORS preflight requests
     if (request.method === 'OPTIONS') {
         return new Response(null, { headers: CORS_HEADERS });
     }
@@ -58,21 +55,38 @@ export async function onRequest(context) {
 
     try {
         const countsRef = collection(db, 'songSearchCounts');
-        const q = query(countsRef, orderBy('count', 'desc'), limit(100)); // Limit to top 100
+        const q = query(countsRef, orderBy('count', 'desc'), limit(100));
         const querySnapshot = await getDocs(q);
 
-        const rankings = [];
+        const songRanking = [];
         querySnapshot.forEach((doc) => {
-            rankings.push({
-                id: doc.id, // This is the song title
+            songRanking.push({
+                id: doc.id,
                 ...doc.data()
             });
         });
 
-        return new Response(JSON.stringify(rankings), { 
+        // Aggregate artist counts
+        const artistCounts = new Map();
+        songRanking.forEach(song => {
+            if (song.artist) {
+                artistCounts.set(song.artist, (artistCounts.get(song.artist) || 0) + song.count);
+            }
+        });
+        
+        const artistRanking = Array.from(artistCounts, ([artist, count]) => ({ id: artist, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 50); // Limit to top 50 artists
+
+        const responsePayload = {
+            songRanking,
+            artistRanking
+        };
+
+        return new Response(JSON.stringify(responsePayload), { 
             headers: { 
                 'Content-Type': 'application/json',
-                'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+                'Cache-Control': 'public, max-age=300',
                 ...CORS_HEADERS
             } 
         });

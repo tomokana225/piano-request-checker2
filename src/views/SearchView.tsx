@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Song, SearchResult } from '../types';
 import { SearchIcon, XIcon, ExternalLinkIcon, CheckCircleIcon, CloudUploadIcon } from '../components/ui/Icons';
+import { normalizeForSearch } from '../utils/normalization';
+import { SongCard } from '../components/ui/SongCard';
 
 interface SearchViewProps {
     songs: Song[];
@@ -12,21 +14,6 @@ interface SearchViewProps {
     fetchRankings: () => void;
     fetchRequestRankings: () => void;
 }
-
-const normalize = (str: string) => str.toLowerCase().replace(/\s+/g, '');
-
-const SongCard: React.FC<{ song: Song }> = ({ song }) => (
-    <div className="bg-gray-800 p-4 rounded-lg flex items-center justify-between">
-        <div>
-            <h3 className="font-bold text-lg">{song.title}</h3>
-            <p className="text-sm text-gray-400">{song.artist}</p>
-        </div>
-        <div className="flex items-center gap-2">
-            {song.isNew && <span className="text-xs font-semibold bg-yellow-500 text-black px-2 py-1 rounded-full">NEW</span>}
-            {song.status === 'practicing' && <span className="text-xs font-semibold bg-blue-500 text-white px-2 py-1 rounded-full">練習中</span>}
-        </div>
-    </div>
-);
 
 export const SearchView: React.FC<SearchViewProps> = ({ songs, searchTerm, setSearchTerm, onAdminOpen, logSearchTerm, logRequest, fetchRankings, fetchRequestRankings }) => {
     const [lastLoggedTerm, setLastLoggedTerm] = useState('');
@@ -44,15 +31,18 @@ export const SearchView: React.FC<SearchViewProps> = ({ songs, searchTerm, setSe
     };
 
     const searchResult: SearchResult = useMemo(() => {
-        const normalizedSearch = normalize(searchTerm);
+        const normalizedSearch = normalizeForSearch(searchTerm);
         if (normalizedSearch.length === 0) return { status: 'notFound', songs: [], searchTerm: '' };
 
-        if (normalizedSearch === 'admin') {
+        if (searchTerm.toLowerCase().replace(/\s+/g, '') === 'admin') {
             onAdminOpen();
             return { status: 'notFound', songs: [], searchTerm: '' };
         }
 
-        const foundSongs = songs.filter(song => normalize(song.title).includes(normalizedSearch) || normalize(song.artist).includes(normalizedSearch));
+        const foundSongs = songs.filter(song => 
+            normalizeForSearch(song.title).includes(normalizedSearch) || 
+            normalizeForSearch(song.artist).includes(normalizedSearch)
+        );
 
         if (foundSongs.length > 0) {
             if (lastLoggedTerm !== normalizedSearch) {

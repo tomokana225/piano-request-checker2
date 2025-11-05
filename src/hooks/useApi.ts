@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Song, RankingItem, RequestRankingItem, BlogPost, UiConfig } from '../types';
+import { Song, RankingItem, RequestRankingItem, BlogPost, UiConfig, ArtistRankingItem } from '../types';
 import { parseSongs } from '../utils/parser';
 
 const DEFAULT_UI_CONFIG: UiConfig = {
@@ -29,6 +29,7 @@ export const useApi = () => {
     const [adminBlogPosts, setAdminBlogPosts] = useState<BlogPost[]>([]);
     const [uiConfig, setUiConfig] = useState<UiConfig>(DEFAULT_UI_CONFIG);
     const [rankingList, setRankingList] = useState<RankingItem[]>([]);
+    const [artistRankingList, setArtistRankingList] = useState<ArtistRankingItem[]>([]);
     const [requestRankingList, setRequestRankingList] = useState<RequestRankingItem[]>([]);
     const [rankings, setRankings] = useState<Record<string, number>>({});
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'offline'>('connecting');
@@ -63,10 +64,11 @@ export const useApi = () => {
             setSongs(parsedSongs);
             setUiConfig(configData);
             setBlogPosts(blogData);
-            setRankingList(rankingData);
+            setRankingList(rankingData.songRanking || []);
+            setArtistRankingList(rankingData.artistRanking || []);
             setRequestRankingList(requestRankingData);
 
-            const rankingMap = rankingData.reduce((acc: Record<string, number>, item: RankingItem, index: number) => {
+            const rankingMap = (rankingData.songRanking || []).reduce((acc: Record<string, number>, item: RankingItem, index: number) => {
                 acc[item.id] = index + 1;
                 return acc;
             }, {});
@@ -184,8 +186,9 @@ export const useApi = () => {
     const fetchRankings = useCallback(async () => {
         try {
             const rankingData = await apiRequest('get-ranking');
-            setRankingList(rankingData);
-             const rankingMap = rankingData.reduce((acc: Record<string, number>, item: RankingItem, index: number) => {
+            setRankingList(rankingData.songRanking || []);
+            setArtistRankingList(rankingData.artistRanking || []);
+            const rankingMap = (rankingData.songRanking || []).reduce((acc: Record<string, number>, item: RankingItem, index: number) => {
                 acc[item.id] = index + 1;
                 return acc;
             }, {});
@@ -212,6 +215,7 @@ export const useApi = () => {
         adminBlogPosts,
         uiConfig,
         rankingList,
+        artistRankingList,
         requestRankingList,
         rankings,
         connectionStatus,

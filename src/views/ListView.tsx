@@ -1,59 +1,121 @@
 import React, { useState, useMemo } from 'react';
 import { Song } from '../types';
+import { ChevronRightIcon, ChevronLeftIcon } from '../components/ui/Icons';
+import { SongCard } from '../components/ui/SongCard';
 
 interface ListViewProps {
     songs: Song[];
-    rankings: Record<string, number>;
 }
 
-export const ListView: React.FC<ListViewProps> = ({ songs, rankings }) => {
-    const [sortKey, setSortKey] = useState<'title' | 'artist' | 'ranking'>('title');
+type ViewState =
+    { mode: 'all' } |
+    { mode: 'artist_select' } |
+    { mode: 'genre_select' } |
+    { mode: 'by_artist', artist: string } |
+    { mode: 'by_genre', genre: string };
 
-    const sortedSongs = useMemo(() => {
-        return [...songs].sort((a, b) => {
-            if (sortKey === 'ranking') {
-                const rankA = rankings[a.title] || Infinity;
-                const rankB = rankings[b.title] || Infinity;
-                return rankA - rankB;
-            }
-            if (a[sortKey] < b[sortKey]) return -1;
-            if (a[sortKey] > b[sortKey]) return 1;
-            return 0;
-        });
-    }, [songs, sortKey, rankings]);
+export const ListView: React.FC<ListViewProps> = ({ songs }) => {
+    const [viewState, setViewState] = useState<ViewState>({ mode: 'all' });
 
-    const SortButton: React.FC<{ sKey: 'title' | 'artist' | 'ranking'; label: string }> = ({ sKey, label }) => (
-        <button
-            onClick={() => setSortKey(sKey)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${sortKey === sKey ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-             style={{backgroundColor: sortKey === sKey ? 'var(--primary-color)' : ''}}
-        >
-            {label}
-        </button>
-    );
+    const artists = useMemo(() => [...new Set(songs.map(s => s.artist))].sort((a, b) => a.localeCompare(b, 'ja')), [songs]);
+    const genres = useMemo(() => [...new Set(songs.map(s => s.genre).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja')), [songs]);
+    const sortedSongs = useMemo(() => [...songs].sort((a, b) => a.title.localeCompare(b.title, 'ja')), [songs]);
+
+    const handleBack = () => {
+        if (viewState.mode === 'by_artist') {
+            setViewState({ mode: 'artist_select' });
+        } else if (viewState.mode === 'by_genre') {
+            setViewState({ mode: 'genre_select' });
+        }
+    };
+    
+    const renderContent = () => {
+        switch (viewState.mode) {
+            case 'artist_select':
+                return (
+                    <div className="space-y-2">
+                        {artists.map(artist => (
+                             <div key={artist} onClick={() => setViewState({ mode: 'by_artist', artist })} className="bg-gray-800 p-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-700 transition-colors">
+                                <span className="font-semibold">{artist}</span>
+                                <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                            </div>
+                        ))}
+                    </div>
+                );
+            case 'genre_select':
+                return (
+                    <div className="space-y-2">
+                        {genres.map(genre => (
+                             <div key={genre} onClick={() => setViewState({ mode: 'by_genre', genre })} className="bg-gray-800 p-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-700 transition-colors">
+                                <span className="font-semibold">{genre}</span>
+                                <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                            </div>
+                        ))}
+                    </div>
+                );
+            case 'by_artist':
+                const songsByArtist = songs.filter(s => s.artist === viewState.artist).sort((a, b) => a.title.localeCompare(b.title, 'ja'));
+                return (
+                    <div className="space-y-3">
+                         {songsByArtist.map((song, index) => <SongCard key={`${song.title}-${index}`} song={song} />)}
+                    </div>
+                );
+             case 'by_genre':
+                const songsByGenre = songs.filter(s => s.genre === viewState.genre).sort((a, b) => a.title.localeCompare(b.title, 'ja'));
+                return (
+                    <div className="space-y-3">
+                         {songsByGenre.map((song, index) => <SongCard key={`${song.title}-${index}`} song={song} />)}
+                    </div>
+                );
+            case 'all':
+            default:
+                return (
+                     <div className="space-y-3">
+                        {sortedSongs.map((song, index) => <SongCard key={`${song.title}-${index}`} song={song} />)}
+                    </div>
+                );
+        }
+    };
+
+    const ModeButton: React.FC<{ mode: ViewState['mode'], label: string }> = ({ mode, label }) => {
+        const isActive = viewState.mode === mode || 
+                         (mode === 'artist_select' && viewState.mode === 'by_artist') || 
+                         (mode === 'genre_select' && viewState.mode === 'by_genre');
+        return (
+            <button
+                onClick={() => setViewState({ mode: mode as any })}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition ${isActive ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                style={{backgroundColor: isActive ? 'var(--primary-color)' : ''}}
+            >
+                {label}
+            </button>
+        );
+    };
 
     return (
-        <div className="w-full max-w-4xl mx-auto animate-fade-in">
-            <div className="flex justify-center gap-4 mb-6">
-                <SortButton sKey="title" label="曲名順" />
-                <SortButton sKey="artist" label="アーティスト順" />
-                <SortButton sKey="ranking" label="人気順" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sortedSongs.map((song, index) => (
-                    <div key={index} className="bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col justify-between">
-                        <div>
-                            {rankings[song.title] && <span className="text-xs font-bold text-yellow-400">人気{rankings[song.title]}位</span>}
-                            <h3 className="font-bold text-lg text-white mt-1">{song.title}</h3>
-                            <p className="text-sm text-gray-400">{song.artist}</p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-3">
-                            {song.isNew && <span className="text-xs font-semibold bg-yellow-500 text-black px-2 py-1 rounded-full">NEW</span>}
-                            {song.status === 'practicing' && <span className="text-xs font-semibold bg-blue-500 text-white px-2 py-1 rounded-full">練習中</span>}
-                        </div>
-                    </div>
-                ))}
-            </div>
+        <div className="w-full max-w-2xl mx-auto animate-fade-in">
+             <div className="mb-6">
+                <div className="flex justify-center gap-4">
+                    <ModeButton mode="all" label="曲名順" />
+                    <ModeButton mode="artist_select" label="アーティスト別" />
+                    <ModeButton mode="genre_select" label="ジャンル別" />
+                </div>
+                 <p className="text-center text-gray-400 mt-4">全{songs.length}曲</p>
+             </div>
+             
+             {(viewState.mode === 'by_artist' || viewState.mode === 'by_genre') && (
+                <div className="mb-4">
+                    <button onClick={handleBack} className="flex items-center gap-2 text-sm text-cyan-400 hover:text-cyan-300 font-semibold mb-2">
+                        <ChevronLeftIcon className="w-4 h-4" />
+                        <span>{viewState.mode === 'by_artist' ? 'アーティスト一覧に戻る' : 'ジャンル一覧に戻る'}</span>
+                    </button>
+                    <h2 className="text-2xl font-bold text-center text-white">
+                        {viewState.mode === 'by_artist' ? viewState.artist : viewState.genre}
+                    </h2>
+                </div>
+            )}
+             
+            {renderContent()}
         </div>
     );
 };
