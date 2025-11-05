@@ -153,7 +153,7 @@ function App() {
                       return <NavButton key={btn.key} onClick={() => setMode(btn.key)} isActive={mode === btn.key} IconComponent={btn.icon} label={config.label} />
                   })}
                   {uiConfig.navButtons.suggest.enabled && 
-                      <NavButton onClick={() => setIsSuggestOpen(true)} isSpecial={true} IconComponent={GiftIcon} label={uiConfig.navButtons.suggest.label} />
+                      <NavButton onClick={() => setIsSuggestOpen(true)} IconComponent={GiftIcon} label={uiConfig.navButtons.suggest.label} />
                   }
               </div>
           </div>

@@ -88,9 +88,17 @@ export async function onRequest(context) {
                 }
                 case 'getBlogPosts': {
                     const postsRef = collection(db, 'blogPosts');
-                    const q = query(postsRef, where('isPublished', '==', true), orderBy('createdAt', 'desc'));
+                    const q = query(postsRef, where('isPublished', '==', true));
                     const querySnapshot = await getDocs(q);
-                    const posts = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    let posts = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    
+                    // Sort in-memory to avoid needing a composite index in Firestore
+                    posts.sort((a, b) => {
+                        const timeA = a.createdAt?._seconds ?? 0;
+                        const timeB = b.createdAt?._seconds ?? 0;
+                        return timeB - timeA;
+                    });
+
                     return jsonResponse(posts);
                 }
                 case 'getAdminBlogPosts': {

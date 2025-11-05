@@ -38,7 +38,12 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose, uiC
                 {hasLinks ? (
                     <div className="space-y-4 mt-6">
                         {uiConfig.ofuseUrl && <SupportLinkButton href={uiConfig.ofuseUrl} label="OFUSE で応援する" />}
-                        {uiConfig.doneruUrl && <SupportLinkButton href={uiConfig.doneruUrl} label="Doneru で支援する" />}
+                        {uiConfig.doneruUrl && (
+                            <div>
+                                <SupportLinkButton href={uiConfig.doneruUrl} label="Doneru で支援する" />
+                                <p className="text-xs text-yellow-300 mt-1">「どねる」を使うと高い還元率で配信者を応援できます</p>
+                            </div>
+                        )}
                         {uiConfig.amazonWishlistUrl && <SupportLinkButton href={uiConfig.amazonWishlistUrl} label="ほしい物リストを見る" />}
                     </div>
                 ) : (
