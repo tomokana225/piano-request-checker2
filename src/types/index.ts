@@ -31,6 +31,9 @@ export interface BlogPost {
   isPublished: boolean;
   createdAt: { _seconds: number, _nanoseconds: number };
   imageUrl?: string;
+  // This is a client-side only property for uploads
+  imageBase64?: string;
+  removeImage?: boolean;
 }
 
 export interface NavButtonConfig {
@@ -43,6 +46,9 @@ export interface UiConfig {
     subtitle: string;
     primaryColor: string;
     twitcastingUrl?: string;
+    ofuseUrl?: string;
+    doneruUrl?: string;
+    amazonWishlistUrl?: string;
     navButtons: {
         search: NavButtonConfig;
         list: NavButtonConfig;

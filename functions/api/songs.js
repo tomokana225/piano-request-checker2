@@ -5,7 +5,7 @@
 import { initializeApp } from 'firebase/app';
 // Use the "lite" version of Firestore for serverless environments to avoid timeouts
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, deleteDoc, Timestamp } from 'firebase/firestore/lite';
-import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage/lite';
+import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
 
 // Default song list to be used if Firestore is empty
@@ -16,6 +16,9 @@ const DEFAULT_UI_CONFIG = {
     subtitle: '弾ける曲 or ぷりんと楽譜にある曲かチェックできます',
     primaryColor: '#ec4899',
     twitcastingUrl: 'https://twitcasting.tv/g:101738740616323847745',
+    ofuseUrl: '',
+    doneruUrl: '',
+    amazonWishlistUrl: '',
     navButtons: {
         search: { label: '曲を検索', enabled: true },
         list: { label: '曲リスト', enabled: true },

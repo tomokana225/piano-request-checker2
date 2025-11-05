@@ -4,7 +4,7 @@ import { useApi } from './hooks/useApi';
 import { Mode } from './types';
 
 import { NavButton } from './components/ui/NavButton';
-import { SearchIcon, ListBulletIcon, TrendingUpIcon, CloudUploadIcon, NewspaperIcon, GiftIcon, VideoCameraIcon } from './components/ui/Icons';
+import { SearchIcon, ListBulletIcon, TrendingUpIcon, CloudUploadIcon, NewspaperIcon, GiftIcon, VideoCameraIcon, HeartIcon } from './components/ui/Icons';
 import { SearchView } from './views/SearchView';
 import { ListView } from './views/ListView';
 import { RankingView } from './views/RankingView';
@@ -12,6 +12,7 @@ import { RequestRankingView } from './views/RequestRankingView';
 import { BlogView } from './views/BlogView';
 import { AdminModal } from './features/admin/AdminModal';
 import { SuggestSongModal } from './features/suggest/SuggestSongModal';
+import { SupportModal } from './features/support/SupportModal';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
 // --- MAIN APP COMPONENT ---
@@ -40,6 +41,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isSuggestOpen, setIsSuggestOpen] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('search');
   
   useEffect(() => {
@@ -64,6 +66,10 @@ function App() {
     {key: 'requests' as Mode, icon: CloudUploadIcon},
     {key: 'blog' as Mode, icon: NewspaperIcon},
   ], []);
+
+  const hasSupportLinks = useMemo(() => {
+    return !!uiConfig.ofuseUrl || !!uiConfig.doneruUrl || !!uiConfig.amazonWishlistUrl;
+  }, [uiConfig]);
 
   const renderCurrentView = () => {
     switch(mode) {
@@ -104,8 +110,8 @@ function App() {
         <header className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold mb-2 text-shadow-lg animate-fade-in" style={{color: uiConfig.primaryColor}}>{uiConfig.mainTitle}</h1>
           <p className="text-gray-300 animate-fade-in" style={{animationDelay: '0.2s'}}>{uiConfig.subtitle}</p>
-          {uiConfig.twitcastingUrl && (
-            <div className="mt-4 animate-fade-in" style={{animationDelay: '0.4s'}}>
+          <div className="mt-4 flex flex-wrap justify-center items-center gap-4 animate-fade-in" style={{animationDelay: '0.4s'}}>
+            {uiConfig.twitcastingUrl && (
               <a 
                 href={uiConfig.twitcastingUrl} 
                 target="_blank" 
@@ -115,8 +121,17 @@ function App() {
                 <VideoCameraIcon className="w-5 h-5 text-cyan-400" />
                 <span>ライブ配信はこちら</span>
               </a>
-            </div>
-          )}
+            )}
+             {hasSupportLinks && (
+               <button 
+                onClick={() => setIsSupportModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg transition-colors text-white font-semibold transform hover:scale-105"
+              >
+                <HeartIcon className="w-5 h-5" />
+                <span>サポートする</span>
+              </button>
+            )}
+          </div>
         </header>
         
         <main>
@@ -156,6 +171,7 @@ function App() {
           onSaveUiConfig={handleSaveUiConfig}
       />
       <SuggestSongModal isOpen={isSuggestOpen} onClose={() => setIsSuggestOpen(false)} songs={songs} onSelect={handleCopyToClipboard}/>
+      <SupportModal isOpen={isSupportModalOpen} onClose={() => setIsSupportModalOpen(false)} uiConfig={uiConfig} />
     </div>
   );
 }

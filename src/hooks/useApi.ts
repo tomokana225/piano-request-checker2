@@ -7,6 +7,9 @@ const DEFAULT_UI_CONFIG: UiConfig = {
     subtitle: '弾ける曲 or ぷりんと楽譜にある曲かチェックできます',
     primaryColor: '#ec4899',
     twitcastingUrl: 'https://twitcasting.tv/g:101738740616323847745',
+    ofuseUrl: '',
+    doneruUrl: '',
+    amazonWishlistUrl: '',
     navButtons: {
         search: { label: '曲を検索', enabled: true },
         list: { label: '曲リスト', enabled: true },

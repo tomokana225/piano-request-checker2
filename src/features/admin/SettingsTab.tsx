@@ -66,6 +66,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ uiConfig, onSaveUiConf
                 </div>
             </div>
 
+            <h3 className="text-lg font-semibold mb-4 mt-8">投げ銭・サポート設定</h3>
+            <div className="space-y-4">
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">OFUSE URL</label>
+                    <input type="text" name="ofuseUrl" value={config.ofuseUrl || ''} onChange={handleInputChange} placeholder="https://ofuse.me/..." className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] sm:text-sm p-2" />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">Doneru URL</label>
+                    <input type="text" name="doneruUrl" value={config.doneruUrl || ''} onChange={handleInputChange} placeholder="https://doneru.jp/..." className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] sm:text-sm p-2" />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">Amazon ほしい物リスト URL</label>
+                    <input type="text" name="amazonWishlistUrl" value={config.amazonWishlistUrl || ''} onChange={handleInputChange} placeholder="https://www.amazon.jp/hz/wishlist/..." className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] sm:text-sm p-2" />
+                </div>
+            </div>
+
             <h3 className="text-lg font-semibold mb-4 mt-8">ナビゲーションボタン設定</h3>
             <div className="space-y-3">
                 {navButtonKeys.map(key => (
