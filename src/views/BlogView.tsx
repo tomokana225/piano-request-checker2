@@ -6,9 +6,9 @@ interface BlogViewProps {
     posts: BlogPost[];
 }
 
-const formatDate = (timestamp: { _seconds: number }) => {
-    if (!timestamp?._seconds) return '';
-    return new Date(timestamp._seconds * 1000).toLocaleDateString('ja-JP', {
+const formatDate = (timestamp: number) => {
+    if (!timestamp) return '';
+    return new Date(timestamp).toLocaleDateString('ja-JP', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',

@@ -9,6 +9,8 @@ interface BlogTabProps {
     onDeletePost: (id: string) => Promise<boolean>;
 }
 
+const MAX_IMAGE_SIZE_KB = 750;
+
 export const BlogTab: React.FC<BlogTabProps> = ({ posts, onSavePost, onDeletePost }) => {
     const [selectedPost, setSelectedPost] = useState<Partial<BlogPost> | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -61,6 +63,15 @@ export const BlogTab: React.FC<BlogTabProps> = ({ posts, onSavePost, onDeletePos
         if (!selectedPost) return;
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
+
+            if (file.size > MAX_IMAGE_SIZE_KB * 1024) {
+                alert(`画像ファイルが大きすぎます。${MAX_IMAGE_SIZE_KB}KB以下のファイルを選択してください。`);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                }
+                return;
+            }
+
             const reader = new FileReader();
             reader.onloadend = () => {
                 setSelectedPost(prev => ({ ...prev, imageBase64: reader.result as string, removeImage: false, imageUrl: undefined }));
@@ -108,9 +119,9 @@ export const BlogTab: React.FC<BlogTabProps> = ({ posts, onSavePost, onDeletePos
         }
     };
 
-    const formatDate = (timestamp?: { _seconds: number }) => {
-      if (!timestamp?._seconds) return 'N/A';
-      return new Date(timestamp._seconds * 1000).toLocaleDateString('ja-JP', {
+    const formatDate = (timestamp?: number) => {
+      if (!timestamp) return 'N/A';
+      return new Date(timestamp).toLocaleDateString('ja-JP', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -162,7 +173,7 @@ export const BlogTab: React.FC<BlogTabProps> = ({ posts, onSavePost, onDeletePos
                                 <textarea name="content" value={selectedPost.content || ''} onChange={handleInputChange} rows={10} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 custom-scrollbar focus:outline-none focus:ring-1 focus:ring-[var(--primary-color)]" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">アイキャッチ画像</label>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">アイキャッチ画像 ({MAX_IMAGE_SIZE_KB}KBまで)</label>
                                 {(selectedPost.imageUrl || selectedPost.imageBase64) && (
                                     <div className="mb-2 relative w-fit">
                                         <img src={selectedPost.imageBase64 || selectedPost.imageUrl} alt="preview" className="max-h-40 rounded-md" />

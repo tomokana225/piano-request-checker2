@@ -2,9 +2,9 @@
 // It acts as a secure intermediary to communicate with Firebase.
 // This function has been extended to act as a router for multiple actions.
 
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 // Use the "lite" version of Firestore for serverless environments to avoid timeouts
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, deleteDoc, Timestamp } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, orderBy, deleteDoc } from 'firebase/firestore/lite';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
 
@@ -36,6 +36,9 @@ const CORS_HEADERS = {
 };
 
 async function getFirebaseApp(env) {
+    if (getApps().length) {
+        return getApps()[0];
+    }
     const firebaseConfig = {
         apiKey: env.FIREBASE_API_KEY,
         authDomain: env.FIREBASE_AUTH_DOMAIN,
@@ -67,12 +70,23 @@ export async function onRequest(context) {
     try {
         app = await getFirebaseApp(env);
     } catch(e) {
-        console.error("Firebase Init Failed:", e.message);
+        console.warn("Firebase Init Failed:", e.message);
         return jsonResponse({ error: "Server configuration error." }, 500);
     }
 
     const db = getFirestore(app);
-    const storage = getStorage(app);
+    let storage;
+    try {
+      // Initialize storage only if the bucket is configured, preventing crashes.
+      if (env.FIREBASE_STORAGE_BUCKET) {
+        storage = getStorage(app);
+      } else {
+        console.warn("Firebase Storage is not configured (FIREBASE_STORAGE_BUCKET is missing). Image operations will be disabled.");
+      }
+    } catch(e) {
+      console.warn("Failed to initialize Firebase Storage:", e.message);
+      // Let `storage` be undefined so that image operations can be conditionally disabled.
+    }
     const url = new URL(request.url);
     const action = url.searchParams.get('action');
 
@@ -88,17 +102,9 @@ export async function onRequest(context) {
                 }
                 case 'getBlogPosts': {
                     const postsRef = collection(db, 'blogPosts');
-                    const q = query(postsRef, where('isPublished', '==', true));
+                    const q = query(postsRef, where('isPublished', '==', true), orderBy('createdAt', 'desc'));
                     const querySnapshot = await getDocs(q);
                     let posts = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                    
-                    // Sort in-memory to avoid needing a composite index in Firestore
-                    posts.sort((a, b) => {
-                        const timeA = a.createdAt?._seconds ?? 0;
-                        const timeB = b.createdAt?._seconds ?? 0;
-                        return timeB - timeA;
-                    });
-
                     return jsonResponse(posts);
                 }
                 case 'getAdminBlogPosts': {
@@ -136,6 +142,10 @@ export async function onRequest(context) {
                     
                     let imageUrl = postData.imageUrl || null;
 
+                    if ((removeImage || imageBase64) && !storage) {
+                        return jsonResponse({ error: "Image operations are disabled because storage is not configured." }, 500);
+                    }
+
                     if (removeImage && imageUrl) {
                         try {
                             const imageRef = ref(storage, imageUrl);
@@ -170,8 +180,8 @@ export async function onRequest(context) {
                     const dataToSave = {
                         ...postData,
                         imageUrl,
-                        createdAt: id ? postData.createdAt : Timestamp.now(),
-                        updatedAt: Timestamp.now(),
+                        createdAt: id ? postData.createdAt : Date.now(),
+                        updatedAt: Date.now(),
                     };
                     
                     await setDoc(docRef, dataToSave, { merge: true });
@@ -185,11 +195,15 @@ export async function onRequest(context) {
                     const docSnap = await getDoc(docRef);
 
                     if (docSnap.exists() && docSnap.data().imageUrl) {
-                        try {
-                            const imageRef = ref(storage, docSnap.data().imageUrl);
-                            await deleteObject(imageRef);
-                        } catch (e) {
-                            console.error("Image deletion failed during post deletion:", e.message);
+                         if (storage) {
+                            try {
+                                const imageRef = ref(storage, docSnap.data().imageUrl);
+                                await deleteObject(imageRef);
+                            } catch (e) {
+                                console.warn("Image deletion failed during post deletion:", e.message);
+                            }
+                        } else {
+                            console.warn(`Storage not configured. Could not delete image for post ${id}.`);
                         }
                     }
                     
@@ -211,7 +225,7 @@ export async function onRequest(context) {
         return new Response('Method Not Allowed', { status: 405, headers: CORS_HEADERS });
 
     } catch (error) {
-        console.error('Firebase operation failed:', error);
+        console.warn('Firebase operation failed:', error);
         return jsonResponse({ error: 'Failed to communicate with the database.' }, 500);
     }
 }

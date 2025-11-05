@@ -34,7 +34,7 @@ export interface BlogPost {
   title: string;
   content: string;
   isPublished: boolean;
-  createdAt: { _seconds: number, _nanoseconds: number };
+  createdAt: number;
   imageUrl?: string;
   // This is a client-side only property for uploads
   imageBase64?: string;

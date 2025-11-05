@@ -1,8 +1,8 @@
 // This serverless function runs on Cloudflare.
 // It retrieves the song request ranking data from Firestore.
 
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore, collection, getDocs, query, orderBy, limit } from 'firebase/firestore/lite';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +11,9 @@ const CORS_HEADERS = {
 };
 
 async function getFirebaseApp(env) {
+    if (getApps().length) {
+        return getApps()[0];
+    }
     const firebaseConfig = {
         apiKey: env.FIREBASE_API_KEY,
         authDomain: env.FIREBASE_AUTH_DOMAIN,
@@ -43,7 +46,7 @@ export async function onRequest(context) {
     try {
         app = await getFirebaseApp(env);
     } catch (e) {
-        console.error("Firebase Init Failed:", e.message);
+        console.warn("Firebase Init Failed:", e.message);
         return new Response(JSON.stringify({ error: "Server configuration error." }), { 
             status: 500, 
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
@@ -73,7 +76,7 @@ export async function onRequest(context) {
             } 
         });
     } catch (error) {
-        console.error('Get request ranking failed:', error);
+        console.warn('Get request ranking failed:', error);
         return new Response(JSON.stringify({ error: 'Failed to fetch request rankings.' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },

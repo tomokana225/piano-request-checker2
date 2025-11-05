@@ -1,8 +1,8 @@
 // This serverless function runs on Cloudflare.
 // It logs song requests from users for songs not in the repertoire.
 
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore/lite';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +11,9 @@ const CORS_HEADERS = {
 };
 
 async function getFirebaseApp(env) {
+    if (getApps().length) {
+        return getApps()[0];
+    }
     const firebaseConfig = {
         apiKey: env.FIREBASE_API_KEY,
         authDomain: env.FIREBASE_AUTH_DOMAIN,
@@ -45,7 +48,7 @@ export async function onRequest(context) {
     try {
         app = await getFirebaseApp(env);
     } catch (e) {
-        console.error("Firebase Init Failed:", e.message);
+        console.warn("Firebase Init Failed:", e.message);
         return new Response(JSON.stringify({ error: "Server configuration error." }), { 
             status: 500, 
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
@@ -72,7 +75,7 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: successHeaders });
 
     } catch (error) {
-        console.error('Logging request failed:', error);
+        console.warn('Logging request failed:', error);
         return new Response(JSON.stringify({ error: "Internal logging error" }), { 
             status: 500, 
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }

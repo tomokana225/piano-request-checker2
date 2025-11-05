@@ -1,9 +1,9 @@
 // This serverless function runs on Cloudflare, not in the user's browser.
 // It logs search terms to Firestore to build a popularity ranking.
 
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 // Use the "lite" version of Firestore for serverless environments to avoid timeouts
-import { getFirestore, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore/lite';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +12,9 @@ const CORS_HEADERS = {
 };
 
 async function getFirebaseApp(env) {
+    if (getApps().length) {
+        return getApps()[0];
+    }
     // Securely construct the Firebase config from environment variables (secrets)
     const firebaseConfig = {
         apiKey: env.FIREBASE_API_KEY,
@@ -141,7 +144,7 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: successHeaders });
 
     } catch (error) {
-        console.error('Logging search failed:', error);
+        console.warn('Logging search failed:', error);
         return new Response(JSON.stringify({ success: true, error: "Internal logging error" }), { status: 200, headers: successHeaders });
     }
 }

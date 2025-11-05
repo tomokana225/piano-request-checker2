@@ -17,8 +17,10 @@ type ViewState =
 export const ListView: React.FC<ListViewProps> = ({ songs }) => {
     const [viewState, setViewState] = useState<ViewState>({ mode: 'all' });
 
-    const artists = useMemo(() => [...new Set(songs.map(s => s.artist))].sort((a, b) => a.localeCompare(b, 'ja')), [songs]);
-    const genres = useMemo(() => [...new Set(songs.map(s => s.genre).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja')), [songs]);
+    // FIX: Explicitly type sort callback parameters 'a' and 'b' as strings to prevent them from being inferred as 'unknown'.
+    const artists = useMemo(() => [...new Set(songs.map(s => s.artist))].sort((a: string, b: string) => a.localeCompare(b, 'ja')), [songs]);
+    // FIX: Explicitly type sort callback parameters 'a' and 'b' as strings to prevent them from being inferred as 'unknown'.
+    const genres = useMemo(() => [...new Set(songs.map(s => s.genre).filter(Boolean))].sort((a: string, b: string) => a.localeCompare(b, 'ja')), [songs]);
     const sortedSongs = useMemo(() => [...songs].sort((a, b) => a.title.localeCompare(b.title, 'ja')), [songs]);
 
     const handleBack = () => {

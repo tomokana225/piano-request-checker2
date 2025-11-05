@@ -1,9 +1,9 @@
 // This serverless function runs on Cloudflare, not in the user's browser.
 // It retrieves the search ranking data from Firestore.
 
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 // Use the "lite" version of Firestore for serverless environments to avoid timeouts
-import { getFirestore, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, orderBy, limit } from 'firebase/firestore/lite';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +12,9 @@ const CORS_HEADERS = {
 };
 
 async function getFirebaseApp(env) {
+    if (getApps().length) {
+        return getApps()[0];
+    }
     const firebaseConfig = {
         apiKey: env.FIREBASE_API_KEY,
         authDomain: env.FIREBASE_AUTH_DOMAIN,
@@ -44,7 +47,7 @@ export async function onRequest(context) {
     try {
         app = await getFirebaseApp(env);
     } catch (e) {
-        console.error("Firebase Init Failed:", e.message);
+        console.warn("Firebase Init Failed:", e.message);
         return new Response(JSON.stringify({ error: "Server configuration error." }), { 
             status: 500, 
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
@@ -91,7 +94,7 @@ export async function onRequest(context) {
             } 
         });
     } catch (error) {
-        console.error('Get ranking failed:', error);
+        console.warn('Get ranking failed:', error);
         return new Response(JSON.stringify({ error: 'Failed to fetch rankings.' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
